@@ -8,18 +8,22 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-neutral-900">TableFront</h1>
-        <p className="mt-1 text-sm text-neutral-500">Sign in to your restaurant dashboard</p>
+    <main className="flex min-h-screen items-center justify-center bg-cream px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-linen bg-white p-8 shadow-sm">
+        <h1 className="font-serif text-2xl font-semibold tracking-tight text-espresso">
+          TableFront
+        </h1>
+        <p className="mt-1.5 text-sm text-espresso/60">
+          Sign in to your restaurant dashboard
+        </p>
 
         {error && (
-          <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          <p className="mt-4 rounded-lg bg-wine/10 px-3 py-2.5 text-sm text-wine">{error}</p>
         )}
 
         <form action={login} className="mt-6 space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
+            <label htmlFor="email" className="block text-sm font-medium text-espresso">
               Email
             </label>
             <input
@@ -28,11 +32,11 @@ export default async function LoginPage({
               type="email"
               required
               autoComplete="email"
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none"
+              className="mt-1 w-full rounded-lg border border-linen bg-white px-3 py-2.5 text-sm text-espresso focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel/30"
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
+            <label htmlFor="password" className="block text-sm font-medium text-espresso">
               Password
             </label>
             <input
@@ -41,12 +45,12 @@ export default async function LoginPage({
               type="password"
               required
               autoComplete="current-password"
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none"
+              className="mt-1 w-full rounded-lg border border-linen bg-white px-3 py-2.5 text-sm text-espresso focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel/30"
             />
           </div>
           <button
             type="submit"
-            className="w-full rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+            className="w-full rounded-lg bg-espresso px-4 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta"
           >
             Sign in
           </button>

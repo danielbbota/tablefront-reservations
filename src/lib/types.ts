@@ -7,6 +7,8 @@ export type DayHours = {
 /** Keyed by day of week: "0" = Sunday … "6" = Saturday */
 export type OperatingHours = Record<string, DayHours>;
 
+export type Lang = 'en' | 'pt' | 'de' | 'fr';
+
 export type Restaurant = {
   id: string;
   name: string;
@@ -15,6 +17,7 @@ export type Restaurant = {
   slot_interval_minutes: number;
   operating_hours: OperatingHours;
   default_max_covers: number;
+  language: Lang;
   brand: Record<string, string>;
   created_at: string;
 };
@@ -41,6 +44,7 @@ export type Booking = {
   date: string; // YYYY-MM-DD
   time_slot: string; // HH:MM:SS
   notes: string | null;
+  table_number: string | null;
   status: BookingStatus;
   source: BookingSource;
   created_at: string;

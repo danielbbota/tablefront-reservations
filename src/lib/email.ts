@@ -2,6 +2,7 @@ import 'server-only';
 import { Resend } from 'resend';
 import type { Booking, Restaurant } from './types';
 import { normalizeSlot } from './availability';
+import { getT, LOCALE, asLang } from './i18n';
 
 const from = () => process.env.EMAIL_FROM || 'TableFront <onboarding@resend.dev>';
 
@@ -9,25 +10,24 @@ function resend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
-function formatWhen(booking: Booking): string {
+function formatWhen(restaurant: Restaurant, booking: Booking): string {
+  const t = getT(asLang(restaurant.language));
   const [y, m, d] = booking.date.split('-').map(Number);
-  const dateStr = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-  return `${dateStr} at ${normalizeSlot(booking.time_slot)}`;
+  const dateStr = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(
+    LOCALE[asLang(restaurant.language)],
+    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }
+  );
+  return `${dateStr} ${t('email.at')} ${normalizeSlot(booking.time_slot)}`;
 }
 
-function bookingSummary(booking: Booking): string {
+function bookingSummary(restaurant: Restaurant, booking: Booking): string {
+  const t = getT(asLang(restaurant.language));
   return [
-    `When: ${formatWhen(booking)}`,
-    `Party size: ${booking.party_size}`,
-    `Name: ${booking.guest_name}`,
-    `Phone: ${booking.guest_phone}`,
-    booking.notes ? `Notes: ${booking.notes}` : null,
+    `${t('email.when')}: ${formatWhen(restaurant, booking)}`,
+    `${t('email.party')}: ${booking.party_size}`,
+    `${t('email.name')}: ${booking.guest_name}`,
+    `${t('email.phone')}: ${booking.guest_phone}`,
+    booking.notes ? `${t('email.notes')}: ${booking.notes}` : null,
   ]
     .filter(Boolean)
     .join('\n');
@@ -35,9 +35,10 @@ function bookingSummary(booking: Booking): string {
 
 /**
  * All senders are fire-and-forget: a failed email must never fail the
- * booking itself, so callers do not await rejections — we log and move on.
+ * booking itself, so we log errors and move on.
  */
 async function send(to: string, subject: string, text: string) {
+  if (!to) return;
   try {
     const { error } = await resend().emails.send({ from: from(), to, subject, text });
     if (error) console.error('[email] send failed:', subject, error);
@@ -47,12 +48,15 @@ async function send(to: string, subject: string, text: string) {
 }
 
 export async function sendGuestConfirmation(restaurant: Restaurant, booking: Booking) {
+  const t = getT(asLang(restaurant.language));
   await send(
     booking.guest_email,
-    `Booking confirmed — ${restaurant.name}`,
-    `Hi ${booking.guest_name},\n\nYour table at ${restaurant.name} is confirmed.\n\n${bookingSummary(
-      booking
-    )}\n\nNeed to change or cancel? Please contact the restaurant directly.\n\nSee you soon!\n${restaurant.name}`
+    `${t('email.confirm.subject')} — ${restaurant.name}`,
+    `${t('email.confirm.hi')} ${booking.guest_name},\n\n${t('email.confirm.body', {
+      restaurant: restaurant.name,
+    })}\n\n${bookingSummary(restaurant, booking)}\n\n${t('email.confirm.change')}\n\n${t(
+      'email.confirm.bye'
+    )}\n${restaurant.name}`
   );
 }
 
@@ -61,21 +65,26 @@ export async function sendOwnerNotification(
   booking: Booking,
   ownerEmail: string
 ) {
+  const t = getT(asLang(restaurant.language));
   await send(
     ownerEmail,
-    `New booking — ${booking.guest_name}, ${formatWhen(booking)}`,
-    `New online booking for ${restaurant.name}:\n\n${bookingSummary(
+    `${t('email.owner.subject')} — ${booking.guest_name}, ${formatWhen(restaurant, booking)}`,
+    `${t('email.owner.body', { restaurant: restaurant.name })}\n\n${bookingSummary(
+      restaurant,
       booking
-    )}\nEmail: ${booking.guest_email}\n\nManage it in your TableFront dashboard.`
+    )}\n${t('form.email')}: ${booking.guest_email}\n\n${t('email.owner.manage')}`
   );
 }
 
 export async function sendGuestCancellation(restaurant: Restaurant, booking: Booking) {
+  const t = getT(asLang(restaurant.language));
   await send(
     booking.guest_email,
-    `Booking cancelled — ${restaurant.name}`,
-    `Hi ${booking.guest_name},\n\nYour booking at ${restaurant.name} has been cancelled.\n\n${bookingSummary(
-      booking
-    )}\n\nIf this is unexpected, please contact the restaurant directly.\n\n${restaurant.name}`
+    `${t('email.cancel.subject')} — ${restaurant.name}`,
+    `${t('email.confirm.hi')} ${booking.guest_name},\n\n${t('email.cancel.body', {
+      restaurant: restaurant.name,
+    })}\n\n${bookingSummary(restaurant, booking)}\n\n${t('email.cancel.unexpected')}\n\n${
+      restaurant.name
+    }`
   );
 }

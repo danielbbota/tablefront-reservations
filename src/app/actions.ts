@@ -89,11 +89,48 @@ export async function createManualBooking(formData: FormData) {
     date,
     time_slot: time,
     notes: String(formData.get('notes') ?? '').trim() || null,
+    table_number: String(formData.get('table') ?? '').trim() || null,
     status: 'confirmed',
     source: 'manual',
   });
 
   if (error) fail('/bookings/new', `Could not create the booking: ${error.message}`);
+
+  revalidatePath('/');
+  redirect('/');
+}
+
+export async function updateBooking(bookingId: string, formData: FormData) {
+  const supabase = await createServerSupabase();
+  const back = `/bookings/${bookingId}/edit`;
+
+  const partySize = Number(formData.get('partySize'));
+  const date = String(formData.get('date') ?? '');
+  const time = String(formData.get('time') ?? '');
+  const name = String(formData.get('name') ?? '').trim();
+
+  if (!name) fail(back, 'Guest name is required.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fail(back, 'A date is required.');
+  if (!/^\d{2}:\d{2}$/.test(time)) fail(back, 'A time is required.');
+  if (!Number.isInteger(partySize) || partySize < 1) fail(back, 'Invalid party size.');
+
+  // Owner edits are trusted like manual bookings: no capacity cap check.
+  // RLS restricts the update to the owner's own restaurant.
+  const { error } = await supabase
+    .from('bookings')
+    .update({
+      guest_name: name,
+      guest_phone: String(formData.get('phone') ?? '').trim(),
+      guest_email: String(formData.get('email') ?? '').trim(),
+      party_size: partySize,
+      date,
+      time_slot: time,
+      notes: String(formData.get('notes') ?? '').trim() || null,
+      table_number: String(formData.get('table') ?? '').trim() || null,
+    })
+    .eq('id', bookingId);
+
+  if (error) fail(back, `Could not update the booking: ${error.message}`);
 
   revalidatePath('/');
   redirect('/');
@@ -127,12 +164,16 @@ export async function saveSettings(formData: FormData) {
     hours[String(d)] = { open, close, closed };
   }
 
+  const language = String(formData.get('language') ?? 'en');
+  if (!['en', 'pt', 'de', 'fr'].includes(language)) fail('/settings', 'Invalid language.');
+
   const { error } = await supabase
     .from('restaurants')
     .update({
       slot_interval_minutes: slotInterval,
       default_max_covers: defaultMaxCovers,
       operating_hours: hours,
+      language,
     })
     .eq('id', owner.restaurant_id);
   if (error) fail('/settings', `Could not save settings: ${error.message}`);

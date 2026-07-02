@@ -33,6 +33,9 @@ export async function POST(req: NextRequest) {
     .replace(/[^a-z0-9-]+/g, '-')
     .replace(/^-+|-+$/g, '');
   const timezone = String(body.timezone ?? 'Europe/Lisbon').trim();
+  const language = ['en', 'pt', 'de', 'fr'].includes(String(body.language))
+    ? String(body.language)
+    : 'en';
   const slotInterval = Number(body.slotIntervalMinutes ?? 30);
   const defaultMaxCovers = Number(body.defaultMaxCovers ?? 20);
   const ownerEmail = String(body.ownerEmail ?? '').trim().toLowerCase();
@@ -56,6 +59,7 @@ export async function POST(req: NextRequest) {
       name,
       slug,
       timezone,
+      language,
       slot_interval_minutes: slotInterval,
       default_max_covers: defaultMaxCovers,
       operating_hours: body.operatingHours ?? DEFAULT_HOURS,

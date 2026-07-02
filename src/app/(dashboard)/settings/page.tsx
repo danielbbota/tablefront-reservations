@@ -1,10 +1,11 @@
 import { createServerSupabase } from '@/lib/supabase/server';
 import { saveSettings } from '@/app/actions';
+import { asLang, getT, LANGS, type TKey } from '@/lib/i18n';
 import type { CapacityRule, Restaurant } from '@/lib/types';
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const input =
-  'rounded-md border border-neutral-300 px-2 py-1.5 text-sm focus:border-neutral-900 focus:outline-none';
+  'rounded-lg border border-linen bg-white px-2.5 py-2 text-sm text-espresso focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel/30';
+const label = 'block text-sm font-medium text-espresso';
 
 export default async function SettingsPage({
   searchParams,
@@ -18,6 +19,8 @@ export default async function SettingsPage({
     .select('*')
     .single<Restaurant>();
   if (!restaurant) return null;
+  const lang = asLang(restaurant.language);
+  const t = getT(lang);
 
   const { data: rules } = await supabase
     .from('capacity_rules')
@@ -33,27 +36,38 @@ export default async function SettingsPage({
   return (
     <div className="max-w-2xl space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-neutral-900">Settings</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Operating hours, time slots and online booking capacity for {restaurant.name}.
+        <h1 className="font-serif text-2xl font-semibold text-espresso">{t('settings.title')}</h1>
+        <p className="mt-1.5 text-sm text-espresso/60">
+          {t('settings.subtitle')} {restaurant.name}.
         </p>
       </div>
 
       {error && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="rounded-lg bg-wine/10 px-4 py-2.5 text-sm text-wine">{error}</p>
       )}
       {saved && (
-        <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
-          Settings saved.
-        </p>
+        <p className="rounded-lg bg-leaf/10 px-4 py-2.5 text-sm text-leaf">{t('settings.saved')}</p>
       )}
 
-      <form action={saveSettings} className="space-y-6 rounded-xl border border-neutral-200 bg-white p-6">
+      <form
+        action={saveSettings}
+        className="space-y-6 rounded-2xl border border-linen bg-white p-6 shadow-sm"
+      >
+        <div>
+          <label htmlFor="language" className={label}>{t('settings.language')}</label>
+          <select id="language" name="language" defaultValue={lang} className={`${input} mt-1 w-full`}>
+            {Object.entries(LANGS).map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-espresso/50">{t('settings.languageHint')}</p>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="slotInterval" className="block text-sm font-medium text-neutral-700">
-              Slot interval (minutes)
-            </label>
+            <label htmlFor="slotInterval" className={label}>{t('settings.slotInterval')}</label>
             <input
               id="slotInterval"
               name="slotInterval"
@@ -66,9 +80,7 @@ export default async function SettingsPage({
             />
           </div>
           <div>
-            <label htmlFor="defaultMaxCovers" className="block text-sm font-medium text-neutral-700">
-              Default max covers per slot (online)
-            </label>
+            <label htmlFor="defaultMaxCovers" className={label}>{t('settings.defaultCap')}</label>
             <input
               id="defaultMaxCovers"
               name="defaultMaxCovers"
@@ -81,24 +93,24 @@ export default async function SettingsPage({
         </div>
 
         <div>
-          <h2 className="text-sm font-medium text-neutral-900">Hours &amp; per-day capacity</h2>
-          <p className="mt-1 text-xs text-neutral-500">
-            Leave “cap override” empty to use the default. The cap only limits online
-            bookings — manual bookings you add are never blocked by it.
-          </p>
-          <div className="mt-3 space-y-2">
-            {DAYS.map((day, d) => {
+          <h2 className="text-sm font-semibold text-espresso">{t('settings.hoursTitle')}</h2>
+          <p className="mt-1 text-xs text-espresso/50">{t('settings.hoursHint')}</p>
+          <div className="mt-4 space-y-2.5">
+            {Array.from({ length: 7 }, (_, d) => {
               const h = restaurant.operating_hours[String(d)] ?? {
                 open: '18:00',
                 close: '22:00',
                 closed: true,
               };
               return (
-                <div key={d} className="grid grid-cols-[7rem_auto_1fr_1fr_1fr] items-center gap-3">
-                  <span className="text-sm text-neutral-700">{day}</span>
-                  <label className="flex items-center gap-1.5 text-xs text-neutral-500">
-                    <input type="checkbox" name={`closed_${d}`} defaultChecked={h.closed} />
-                    Closed
+                <div
+                  key={d}
+                  className="grid grid-cols-[7.5rem_auto_1fr_1fr_1fr] items-center gap-3"
+                >
+                  <span className="text-sm text-espresso">{t(`days.${d}` as TKey)}</span>
+                  <label className="flex items-center gap-1.5 text-xs text-espresso/60">
+                    <input type="checkbox" name={`closed_${d}`} defaultChecked={h.closed} className="accent-terracotta" />
+                    {t('settings.closed')}
                   </label>
                   <input type="time" name={`open_${d}`} defaultValue={h.open} className={input} />
                   <input type="time" name={`close_${d}`} defaultValue={h.close} className={input} />
@@ -106,7 +118,7 @@ export default async function SettingsPage({
                     type="number"
                     name={`cap_${d}`}
                     min={0}
-                    placeholder="cap override"
+                    placeholder={t('settings.capPlaceholder')}
                     defaultValue={capByDay.get(d) ?? ''}
                     className={input}
                   />
@@ -116,19 +128,15 @@ export default async function SettingsPage({
           </div>
         </div>
 
-        <button className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700">
-          Save settings
+        <button className="rounded-lg bg-espresso px-5 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta">
+          {t('settings.save')}
         </button>
       </form>
 
-      <div className="rounded-xl border border-neutral-200 bg-white p-6">
-        <h2 className="text-sm font-medium text-neutral-900">Embed the booking widget</h2>
-        <p className="mt-1 text-xs text-neutral-500">
-          Paste this snippet into your website where the booking form should appear. Theme it
-          with CSS custom properties (<code>--tf-accent</code>, <code>--tf-font</code>,{' '}
-          <code>--tf-radius</code>) on any parent element.
-        </p>
-        <pre className="mt-3 overflow-x-auto rounded-md bg-neutral-900 p-4 text-xs text-neutral-100">
+      <div className="rounded-2xl border border-linen bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-espresso">{t('settings.embedTitle')}</h2>
+        <p className="mt-1 text-xs text-espresso/50">{t('settings.embedHint')}</p>
+        <pre className="mt-3 overflow-x-auto rounded-lg bg-espresso p-4 text-xs leading-relaxed text-cream">
           {snippet}
         </pre>
       </div>

@@ -2,14 +2,15 @@ import Link from 'next/link';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { setBookingStatus } from '@/app/actions';
 import { normalizeSlot, nowInTimezone } from '@/lib/availability';
+import { asLang, getT } from '@/lib/i18n';
 import type { Booking, Restaurant } from '@/lib/types';
 
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; error?: string }>;
 }) {
-  const { view } = await searchParams;
+  const { view, error } = await searchParams;
   const showPast = view === 'past';
 
   const supabase = await createServerSupabase();
@@ -17,7 +18,10 @@ export default async function BookingsPage({
     .from('restaurants')
     .select('*')
     .single<Restaurant>();
-  const today = restaurant ? nowInTimezone(restaurant.timezone).date : new Date().toISOString().slice(0, 10);
+  const t = getT(asLang(restaurant?.language));
+  const today = restaurant
+    ? nowInTimezone(restaurant.timezone).date
+    : new Date().toISOString().slice(0, 10);
 
   const query = supabase.from('bookings').select('*');
   const { data: bookings } = await (showPast
@@ -27,95 +31,112 @@ export default async function BookingsPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-neutral-900">
-          {showPast ? 'Past bookings' : 'Upcoming bookings'}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-serif text-2xl font-semibold text-espresso">
+          {showPast ? t('bookings.past') : t('bookings.upcoming')}
         </h1>
-        <div className="flex gap-2 text-sm">
+        <div className="flex gap-1 rounded-full border border-linen bg-white p-1 text-sm">
           <Link
             href="/"
-            className={`rounded-md px-3 py-1.5 ${!showPast ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:text-neutral-900'}`}
+            className={`rounded-full px-4 py-1.5 font-medium transition ${
+              !showPast ? 'bg-espresso text-cream' : 'text-espresso/60 hover:text-espresso'
+            }`}
           >
-            Upcoming
+            {t('bookings.tab.upcoming')}
           </Link>
           <Link
             href="/?view=past"
-            className={`rounded-md px-3 py-1.5 ${showPast ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:text-neutral-900'}`}
+            className={`rounded-full px-4 py-1.5 font-medium transition ${
+              showPast ? 'bg-espresso text-cream' : 'text-espresso/60 hover:text-espresso'
+            }`}
           >
-            Past
+            {t('bookings.tab.past')}
           </Link>
         </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500">
+      {error && (
+        <p className="mt-4 rounded-lg bg-wine/10 px-4 py-2.5 text-sm text-wine">{error}</p>
+      )}
+
+      <div className="mt-5 overflow-x-auto rounded-2xl border border-linen bg-white shadow-sm">
+        <table className="w-full text-left text-sm text-espresso">
+          <thead className="border-b border-linen bg-sand/50 text-xs font-semibold uppercase tracking-wider text-espresso/60">
             <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Time</th>
-              <th className="px-4 py-3">Guest</th>
-              <th className="px-4 py-3">Party</th>
-              <th className="px-4 py-3">Contact</th>
-              <th className="px-4 py-3">Notes</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Source</th>
-              <th className="px-4 py-3" />
+              <th className="px-4 py-3.5">{t('bookings.date')}</th>
+              <th className="px-4 py-3.5">{t('bookings.time')}</th>
+              <th className="px-4 py-3.5">{t('bookings.guest')}</th>
+              <th className="px-4 py-3.5">{t('bookings.party')}</th>
+              <th className="px-4 py-3.5">{t('bookings.table')}</th>
+              <th className="px-4 py-3.5">{t('bookings.contact')}</th>
+              <th className="px-4 py-3.5">{t('bookings.notes')}</th>
+              <th className="px-4 py-3.5">{t('bookings.status')}</th>
+              <th className="px-4 py-3.5" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-100">
+          <tbody className="divide-y divide-linen/60">
             {(bookings ?? []).map((b) => (
-              <tr key={b.id} className={b.status === 'cancelled' ? 'text-neutral-400' : ''}>
-                <td className="whitespace-nowrap px-4 py-3">{b.date}</td>
-                <td className="px-4 py-3">{normalizeSlot(b.time_slot)}</td>
-                <td className="px-4 py-3 font-medium">{b.guest_name}</td>
-                <td className="px-4 py-3">{b.party_size}</td>
-                <td className="px-4 py-3">
+              <tr key={b.id} className={b.status === 'cancelled' ? 'text-espresso/40' : ''}>
+                <td className="whitespace-nowrap px-4 py-3.5">{b.date}</td>
+                <td className="px-4 py-3.5 font-medium">{normalizeSlot(b.time_slot)}</td>
+                <td className="px-4 py-3.5 font-medium">{b.guest_name}</td>
+                <td className="px-4 py-3.5">{b.party_size}</td>
+                <td className="px-4 py-3.5">{b.table_number ?? '—'}</td>
+                <td className="px-4 py-3.5">
                   <div>{b.guest_phone}</div>
-                  <div className="text-xs text-neutral-400">{b.guest_email}</div>
+                  <div className="text-xs text-espresso/50">{b.guest_email}</div>
                 </td>
-                <td className="max-w-48 px-4 py-3 text-xs">{b.notes}</td>
-                <td className="px-4 py-3">
+                <td className="max-w-44 px-4 py-3.5 text-xs">{b.notes}</td>
+                <td className="px-4 py-3.5">
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                    className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${
                       b.status === 'confirmed'
-                        ? 'bg-green-50 text-green-700'
-                        : 'bg-neutral-100 text-neutral-500'
+                        ? 'bg-leaf/15 text-leaf'
+                        : 'bg-espresso/10 text-espresso/50'
                     }`}
                   >
-                    {b.status}
+                    {t(b.status === 'confirmed' ? 'status.confirmed' : 'status.cancelled')}
                   </span>
+                  <div className="mt-1 text-[10px] uppercase tracking-wide text-espresso/40">
+                    {t(b.source === 'widget' ? 'source.widget' : 'source.manual')}
+                  </div>
                 </td>
-                <td className="px-4 py-3 text-xs">{b.source}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-right">
-                  {b.status === 'confirmed' ? (
-                    <form action={setBookingStatus.bind(null, b.id, 'cancelled')}>
-                      <button className="text-xs font-medium text-red-600 hover:text-red-800">
-                        Cancel
-                      </button>
-                    </form>
-                  ) : (
-                    <form action={setBookingStatus.bind(null, b.id, 'confirmed')}>
-                      <button className="text-xs font-medium text-green-700 hover:text-green-900">
-                        Re-confirm
-                      </button>
-                    </form>
-                  )}
+                <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                  <div className="flex items-center justify-end gap-3">
+                    <Link
+                      href={`/bookings/${b.id}/edit`}
+                      className="text-xs font-semibold text-caramel transition hover:text-terracotta"
+                    >
+                      {t('bookings.edit')}
+                    </Link>
+                    {b.status === 'confirmed' ? (
+                      <form action={setBookingStatus.bind(null, b.id, 'cancelled')}>
+                        <button className="text-xs font-semibold text-wine transition hover:opacity-70">
+                          {t('bookings.cancel')}
+                        </button>
+                      </form>
+                    ) : (
+                      <form action={setBookingStatus.bind(null, b.id, 'confirmed')}>
+                        <button className="text-xs font-semibold text-leaf transition hover:opacity-70">
+                          {t('bookings.reconfirm')}
+                        </button>
+                      </form>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
             {(bookings ?? []).length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-neutral-400">
-                  No {showPast ? 'past' : 'upcoming'} bookings.
+                <td colSpan={9} className="px-4 py-12 text-center text-espresso/40">
+                  {showPast ? t('bookings.empty.past') : t('bookings.empty.upcoming')}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-neutral-400">
-        Cancelling a booking emails the guest automatically.
-      </p>
+      <p className="mt-3 text-xs text-espresso/50">{t('bookings.cancelNote')}</p>
     </div>
   );
 }

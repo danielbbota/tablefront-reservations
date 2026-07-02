@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
+/*
+ * TableFront brand (from tablesfront.com): warm cream surfaces, espresso ink,
+ * caramel-gold accent, terracotta highlights.
+ * The app is light-only by design — the widget/dashboard must look identical
+ * regardless of the visitor's OS dark-mode preference, so no
+ * prefers-color-scheme override here.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --background: #f5efe0;
+  --foreground: #1a1208;
+  --tf-cream: #f5efe0;
+  --tf-sand: #ede8dc;
+  --tf-linen: #ddd3be;
+  --tf-espresso: #1a1208;
+  --tf-ink: #1e1e1e;
+  --tf-caramel: #c9954a;
+  --tf-terracotta: #8c4225;
+  --tf-green: #4a7c4e;
+  --tf-wine: #7c3a3a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-cream: var(--tf-cream);
+  --color-sand: var(--tf-sand);
+  --color-linen: var(--tf-linen);
+  --color-espresso: var(--tf-espresso);
+  --color-ink: var(--tf-ink);
+  --color-caramel: var(--tf-caramel);
+  --color-terracotta: var(--tf-terracotta);
+  --color-leaf: var(--tf-green);
+  --color-wine: var(--tf-wine);
   --font-sans: var(--font-geist-sans);
+  --font-serif: var(--font-playfair);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Explicit input colors so browser dark-mode never washes out form text. */
+input,
+select,
+textarea {
+  color: var(--tf-espresso);
+  background-color: #fff;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #8a7f6a;
 }
