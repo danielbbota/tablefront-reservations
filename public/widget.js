@@ -107,6 +107,17 @@
     'border-radius:var(--tf-radius,10px);text-align:center;}',
     '.tf-done h3{font-size:1.05rem;margin-bottom:.4rem;color:#1e1e1e;}',
     '.tf-done p{font-size:.9rem;color:#6b5f4b;}',
+    '@keyframes tf-rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}',
+    '@keyframes tf-pop{0%{opacity:0;transform:scale(.96);}60%{transform:scale(1.01);}100%{opacity:1;transform:scale(1);}}',
+    'form{animation:tf-rise .4s ease-out both;}',
+    '.tf-slots{animation:tf-rise .3s ease-out both;}',
+    '.tf-slot{transition:border-color .15s,transform .15s,background .15s,color .15s;}',
+    '.tf-slot:hover{transform:translateY(-1px);}',
+    '.tf-slot:active{transform:scale(.97);}',
+    '.tf-btn{transition:opacity .15s,transform .1s;}',
+    '.tf-btn:active:not(:disabled){transform:scale(.985);}',
+    '.tf-done{animation:tf-pop .35s ease-out both;}',
+    '@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}',
     '@media (max-width:420px){.tf-row{flex-direction:column;gap:0;}}',
   ].join('');
 
@@ -148,8 +159,15 @@
     var root = el('div', { class: 'tf-card' });
     shadow.appendChild(root);
 
+    // Language priority: explicit data-lang attribute > guest's browser
+    // language (tourists!) > the restaurant's configured language > English.
+    var attrLang = mount.getAttribute('data-lang');
+    var browserLang = (navigator.languages || [navigator.language || ''])
+      .map(function (l) { return String(l).slice(0, 2).toLowerCase(); })
+      .filter(function (l) { return I18N[l]; })[0] || null;
+
     var state = {
-      lang: mount.getAttribute('data-lang') || null,
+      lang: (attrLang && I18N[attrLang] ? attrLang : null) || browserLang,
       date: '',
       party: 2,
       time: null,
@@ -337,6 +355,7 @@
             phone: phoneInput.value.trim(),
             email: emailInput.value.trim(),
             notes: notesInput.value.trim(),
+            lang: I18N[state.lang] ? state.lang : 'en',
           }),
         })
           .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })

@@ -30,7 +30,7 @@ export default async function BookingsPage({
   ).returns<Booking[]>();
 
   return (
-    <div>
+    <div className="tf-rise">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-serif text-2xl font-semibold text-espresso">
           {showPast ? t('bookings.past') : t('bookings.upcoming')}
@@ -76,7 +76,7 @@ export default async function BookingsPage({
           </thead>
           <tbody className="divide-y divide-linen/60">
             {(bookings ?? []).map((b) => (
-              <tr key={b.id} className={b.status === 'cancelled' ? 'text-espresso/40' : ''}>
+              <tr key={b.id} className={`transition-colors hover:bg-sand/30 ${b.status === 'cancelled' ? 'text-espresso/40' : ''}`}>
                 <td className="whitespace-nowrap px-4 py-3.5">{b.date}</td>
                 <td className="px-4 py-3.5 font-medium">{normalizeSlot(b.time_slot)}</td>
                 <td className="px-4 py-3.5 font-medium">{b.guest_name}</td>

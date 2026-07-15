@@ -47,8 +47,14 @@ export type Booking = {
   table_number: string | null;
   status: BookingStatus;
   source: BookingSource;
+  guest_lang: Lang;
+  cancel_token: string;
+  reminder_sent_at: string | null;
+  service_status: ServiceStatus | null;
   created_at: string;
 };
+
+export type ServiceStatus = 'arrived' | 'seated' | 'no_show';
 
 export type Owner = {
   id: string;

@@ -9,7 +9,7 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-cream px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-linen bg-white p-8 shadow-sm">
+      <div className="tf-rise w-full max-w-sm rounded-2xl border border-linen bg-white p-8 shadow-sm">
         <h1 className="font-serif text-2xl font-semibold tracking-tight text-espresso">
           TableFront
         </h1>

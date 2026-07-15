@@ -43,6 +43,9 @@ export async function POST(req: NextRequest) {
   const phone = String(body.phone ?? '').trim();
   const email = String(body.email ?? '').trim();
   const notes = String(body.notes ?? '').trim().slice(0, 1000) || null;
+  const lang = ['en', 'pt', 'de', 'fr'].includes(String(body.lang))
+    ? String(body.lang)
+    : null;
 
   if (!restaurantId) return corsJson({ error: 'Missing restaurant' }, 400);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return corsJson({ error: 'Invalid date' }, 400);
@@ -91,6 +94,7 @@ export async function POST(req: NextRequest) {
       p_guest_email: email,
       p_notes: notes,
       p_max_covers: maxCovers,
+      p_guest_lang: lang ?? restaurant.language ?? 'en',
     })
     .single<Booking>();
 

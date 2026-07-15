@@ -21,6 +21,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
               {restaurant?.name ?? 'TableFront'}
             </span>
             <nav className="flex gap-5 text-sm font-medium text-espresso/70">
+              <Link href="/day" className="transition hover:text-terracotta">
+                {t('nav.day')}
+              </Link>
               <Link href="/" className="transition hover:text-terracotta">
                 {t('nav.bookings')}
               </Link>

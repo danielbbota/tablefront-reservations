@@ -54,7 +54,7 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <div className="mx-auto max-w-xl px-4 py-12">
+      <div className="tf-rise mx-auto max-w-xl px-4 py-12">
         <h1 className="font-serif text-2xl font-semibold tracking-tight text-espresso">
           TableFront admin
         </h1>

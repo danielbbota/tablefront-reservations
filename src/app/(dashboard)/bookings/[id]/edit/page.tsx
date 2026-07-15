@@ -28,7 +28,7 @@ export default async function EditBookingPage({
   const t = getT(asLang(restaurant?.language));
 
   return (
-    <div className="max-w-lg">
+    <div className="tf-rise max-w-lg">
       <h1 className="font-serif text-2xl font-semibold text-espresso">{t('edit.title')}</h1>
       <p className="mt-1.5 text-sm text-espresso/60">
         {booking.guest_name} — {booking.date}, {normalizeSlot(booking.time_slot)}

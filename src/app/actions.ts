@@ -5,7 +5,13 @@ import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendGuestCancellation } from '@/lib/email';
-import type { Booking, BookingStatus, OperatingHours, Restaurant } from '@/lib/types';
+import type {
+  Booking,
+  BookingStatus,
+  OperatingHours,
+  Restaurant,
+  ServiceStatus,
+} from '@/lib/types';
 
 /**
  * All dashboard reads/writes go through the cookie-based client, so RLS
@@ -58,6 +64,30 @@ export async function setBookingStatus(bookingId: string, status: BookingStatus)
   revalidatePath('/');
 }
 
+/** Tap-to-toggle service status on the day view (arrived / seated / no-show). */
+export async function setServiceStatus(
+  bookingId: string,
+  status: ServiceStatus,
+  date: string
+) {
+  const supabase = await createServerSupabase();
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('service_status')
+    .eq('id', bookingId)
+    .maybeSingle<Pick<Booking, 'service_status'>>();
+  if (!booking) fail(`/day?date=${date}`, 'Booking not found.');
+
+  const next = booking.service_status === status ? null : status;
+  const { error } = await supabase
+    .from('bookings')
+    .update({ service_status: next })
+    .eq('id', bookingId);
+  if (error) fail(`/day?date=${date}`, `Could not update: ${error.message}`);
+
+  revalidatePath('/day');
+}
+
 export async function createManualBooking(formData: FormData) {
   const supabase = await createServerSupabase();
 
@@ -78,10 +108,17 @@ export async function createManualBooking(formData: FormData) {
   if (!Number.isInteger(partySize) || partySize < 1)
     fail('/bookings/new', 'Invalid party size.');
 
+  // Guest emails for manual bookings default to the restaurant's language.
+  const { data: rest } = await supabase
+    .from('restaurants')
+    .select('language')
+    .single<Pick<Restaurant, 'language'>>();
+
   // Manual bookings deliberately skip the online capacity cap — the cap only
   // throttles the self-serve widget.
   const { error } = await supabase.from('bookings').insert({
     restaurant_id: owner.restaurant_id,
+    guest_lang: rest?.language ?? 'en',
     guest_name: name,
     guest_phone: String(formData.get('phone') ?? '').trim(),
     guest_email: String(formData.get('email') ?? '').trim(),

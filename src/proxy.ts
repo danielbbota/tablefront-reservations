@@ -50,7 +50,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except public API, admin, widget script and static assets.
-    '/((?!api/public|api/admin|admin|widget\\.js|_next/static|_next/image|favicon\\.ico).*)',
+    // Everything except public API, cron, admin, guest cancel page,
+    // widget script and static assets.
+    '/((?!api/public|api/admin|api/cron|admin|cancel|widget\\.js|_next/static|_next/image|favicon\\.ico).*)',
   ],
 };

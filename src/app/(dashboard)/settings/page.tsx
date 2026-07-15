@@ -34,7 +34,7 @@ export default async function SettingsPage({
   const snippet = `<div data-tablefront-widget data-restaurant="${restaurant.id}"></div>\n<script src="${appUrl}/widget.js" async></script>`;
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="tf-rise max-w-2xl space-y-8">
       <div>
         <h1 className="font-serif text-2xl font-semibold text-espresso">{t('settings.title')}</h1>
         <p className="mt-1.5 text-sm text-espresso/60">
