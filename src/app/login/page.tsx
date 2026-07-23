@@ -9,8 +9,14 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-cream px-4">
-      <div className="tf-rise w-full max-w-sm rounded-2xl border border-linen bg-white p-8 shadow-sm">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-espresso">
+      <div className="tf-rise w-full max-w-sm rounded-2xl border border-linen bg-white p-8 shadow-lift">
+        <span
+          aria-hidden
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-espresso font-serif text-base font-semibold text-cream shadow-card"
+        >
+          TF
+        </span>
+        <h1 className="mt-4 font-serif text-2xl font-semibold tracking-tight text-espresso">
           TableFront
         </h1>
         <p className="mt-1.5 text-sm text-espresso/60">
@@ -50,7 +56,7 @@ export default async function LoginPage({
           </div>
           <button
             type="submit"
-            className="w-full rounded-lg bg-espresso px-4 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta"
+            className="min-h-11 w-full rounded-lg bg-espresso px-4 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta active:scale-[0.99]"
           >
             Sign in
           </button>

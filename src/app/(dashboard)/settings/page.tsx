@@ -1,4 +1,6 @@
+import { Clock, Code2, Globe } from 'lucide-react';
 import { createServerSupabase } from '@/lib/supabase/server';
+import CopyButton from '@/components/copy-button';
 import { saveSettings } from '@/app/actions';
 import { asLang, getT, LANGS, type TKey } from '@/lib/i18n';
 import type { CapacityRule, Restaurant } from '@/lib/types';
@@ -51,10 +53,10 @@ export default async function SettingsPage({
 
       <form
         action={saveSettings}
-        className="space-y-6 rounded-2xl border border-linen bg-white p-6 shadow-sm"
+        className="space-y-6 rounded-2xl border border-linen bg-white p-6 shadow-card"
       >
         <div>
-          <label htmlFor="language" className={label}>{t('settings.language')}</label>
+          <label htmlFor="language" className={`${label} flex items-center gap-1.5`}><Globe size={14} aria-hidden className="text-caramel" />{t('settings.language')}</label>
           <select id="language" name="language" defaultValue={lang} className={`${input} mt-1 w-full`}>
             {Object.entries(LANGS).map(([code, name]) => (
               <option key={code} value={code}>
@@ -93,7 +95,7 @@ export default async function SettingsPage({
         </div>
 
         <div>
-          <h2 className="text-sm font-semibold text-espresso">{t('settings.hoursTitle')}</h2>
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-espresso"><Clock size={14} aria-hidden className="text-caramel" />{t('settings.hoursTitle')}</h2>
           <p className="mt-1 text-xs text-espresso/50">{t('settings.hoursHint')}</p>
           <div className="mt-4 space-y-2.5">
             {Array.from({ length: 7 }, (_, d) => {
@@ -105,11 +107,11 @@ export default async function SettingsPage({
               return (
                 <div
                   key={d}
-                  className="grid grid-cols-[7.5rem_auto_1fr_1fr_1fr] items-center gap-3"
+                  className="grid grid-cols-[7.5rem_auto_1fr_1fr_1fr] items-center gap-3 rounded-lg px-2 py-1.5 odd:bg-sand/40"
                 >
                   <span className="text-sm text-espresso">{t(`days.${d}` as TKey)}</span>
                   <label className="flex items-center gap-1.5 text-xs text-espresso/60">
-                    <input type="checkbox" name={`closed_${d}`} defaultChecked={h.closed} className="accent-terracotta" />
+                    <input type="checkbox" name={`closed_${d}`} defaultChecked={h.closed} className="tf-switch" />
                     {t('settings.closed')}
                   </label>
                   <input type="time" name={`open_${d}`} defaultValue={h.open} className={input} />
@@ -128,13 +130,16 @@ export default async function SettingsPage({
           </div>
         </div>
 
-        <button className="rounded-lg bg-espresso px-5 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta">
+        <button className="min-h-11 rounded-lg bg-espresso px-6 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta active:scale-[0.99]">
           {t('settings.save')}
         </button>
       </form>
 
-      <div className="rounded-2xl border border-linen bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-espresso">{t('settings.embedTitle')}</h2>
+      <div className="rounded-2xl border border-linen bg-white p-6 shadow-card">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-espresso"><Code2 size={14} aria-hidden className="text-caramel" />{t('settings.embedTitle')}</h2>
+          <CopyButton text={snippet} label={t('settings.copy')} copiedLabel={t('settings.copied')} />
+        </div>
         <p className="mt-1 text-xs text-espresso/50">{t('settings.embedHint')}</p>
         <pre className="mt-3 overflow-x-auto rounded-lg bg-espresso p-4 text-xs leading-relaxed text-cream">
           {snippet}

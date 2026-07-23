@@ -117,7 +117,23 @@
     '.tf-btn{transition:opacity .15s,transform .1s;}',
     '.tf-btn:active:not(:disabled){transform:scale(.985);}',
     '.tf-done{animation:tf-pop .35s ease-out both;}',
-    '@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}',
+    '@keyframes tf-shimmer{from{background-position:200% 0;}to{background-position:-200% 0;}}',
+    '.tf-skel{height:2.1rem;border-radius:var(--tf-radius,10px);',
+    'background:linear-gradient(100deg,#ede8dc 40%,#f7f3e8 50%,#ede8dc 60%);',
+    'background-size:200% 100%;animation:tf-shimmer 1.4s linear infinite;}',
+    '.tf-spinner{display:inline-block;width:.85rem;height:.85rem;margin-right:.45rem;',
+    'vertical-align:-2px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;',
+    'border-radius:50%;animation:tf-spin .7s linear infinite;}',
+    '@keyframes tf-spin{to{transform:rotate(360deg);}}',
+    '.tf-check{width:3rem;height:3rem;margin:0 auto .6rem;display:block;}',
+    '.tf-check circle{fill:none;stroke:#4a7c4e;stroke-width:2.5;stroke-dasharray:151;',
+    'stroke-dashoffset:151;animation:tf-draw .5s ease-out forwards;}',
+    '.tf-check path{fill:none;stroke:#4a7c4e;stroke-width:3;stroke-linecap:round;',
+    'stroke-linejoin:round;stroke-dasharray:36;stroke-dashoffset:36;',
+    'animation:tf-draw .35s ease-out .35s forwards;}',
+    '@keyframes tf-draw{to{stroke-dashoffset:0;}}',
+    '@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}',
+    '.tf-check circle,.tf-check path{stroke-dashoffset:0;}}',
     '@media (max-width:420px){.tf-row{flex-direction:column;gap:0;}}',
   ].join('');
 
@@ -241,10 +257,15 @@
           return;
         }
         if (state.loading) {
-          slotsMsg.textContent = T('checking');
-          slotsMsg.hidden = false;
+          slotsMsg.hidden = true;
+          for (var k = 0; k < 6; k++) {
+            slotsWrap.appendChild(el('div', { class: 'tf-skel', 'aria-hidden': 'true' }));
+          }
+          slotsWrap.setAttribute('aria-busy', 'true');
+          slotsWrap.setAttribute('aria-label', T('checking'));
           return;
         }
+        slotsWrap.removeAttribute('aria-busy');
 
         var open = state.slots.filter(function (s) {
           return s.remaining >= state.party;
@@ -340,7 +361,9 @@
         e.preventDefault();
         if (!state.time) return;
         submitBtn.disabled = true;
-        submitBtn.textContent = T('booking');
+        submitBtn.textContent = '';
+        submitBtn.appendChild(el('span', { class: 'tf-spinner', 'aria-hidden': 'true' }));
+        submitBtn.appendChild(document.createTextNode(T('booking')));
         showError(null);
 
         fetch(ORIGIN + '/api/public/bookings', {
@@ -370,8 +393,14 @@
             var b = res.d.booking;
             var party = b.partySize === 1 ? T('guest1') : fmt(T('guestN'), { n: b.partySize });
             root.textContent = '';
+            var check = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            check.setAttribute('class', 'tf-check');
+            check.setAttribute('viewBox', '0 0 52 52');
+            check.setAttribute('aria-hidden', 'true');
+            check.innerHTML = '<circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/>';
             root.appendChild(
               el('div', { class: 'tf-done' }, [
+                check,
                 el('h3', { text: T('confirmedTitle') }),
                 el('p', { text: fmt(T('confirmedBody'), { date: b.date, time: b.time, party: party }) }),
               ])

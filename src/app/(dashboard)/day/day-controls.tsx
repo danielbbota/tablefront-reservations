@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
  * Calendar navigation for the day view: previous/next arrows, a native
@@ -34,7 +35,7 @@ export default function DayControls({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" onClick={() => shift(-1)} aria-label="Previous day" className={btn}>
-        ←
+        <ChevronLeft size={16} aria-hidden />
       </button>
       <input
         type="date"
@@ -43,7 +44,7 @@ export default function DayControls({
         className="rounded-lg border border-linen bg-white px-3 py-2 text-sm text-espresso focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel/30"
       />
       <button type="button" onClick={() => shift(1)} aria-label="Next day" className={btn}>
-        →
+        <ChevronRight size={16} aria-hidden />
       </button>
       <button
         type="button"

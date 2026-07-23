@@ -29,7 +29,7 @@ export default async function CancelPage({
 
   const card = (children: React.ReactNode) => (
     <main className="flex min-h-screen items-center justify-center bg-cream px-4">
-      <div className="tf-rise w-full max-w-md rounded-2xl border border-linen bg-white p-8 shadow-sm">
+      <div className="tf-rise w-full max-w-md rounded-2xl border border-linen bg-white p-8 shadow-lift">
         {children}
       </div>
     </main>
@@ -124,7 +124,7 @@ export default async function CancelPage({
       </p>
       {summary}
       <form action={cancelBooking} className="mt-5">
-        <button className="w-full rounded-lg bg-wine px-4 py-2.5 text-sm font-semibold text-cream transition hover:opacity-90 active:scale-[0.985]">
+        <button className="min-h-11 w-full rounded-lg bg-wine px-4 py-2.5 text-sm font-semibold text-cream transition hover:opacity-90 active:scale-[0.985]">
           {t('cancel.confirm')}
         </button>
       </form>

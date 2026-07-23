@@ -64,7 +64,7 @@ export default function AdminPage() {
 
         <form
           onSubmit={onSubmit}
-          className="mt-6 space-y-4 rounded-2xl border border-linen bg-white p-6 shadow-sm"
+          className="mt-6 space-y-4 rounded-2xl border border-linen bg-white p-6 shadow-card"
         >
           <div>
             <label className={label}>Admin secret</label>
@@ -124,7 +124,7 @@ export default function AdminPage() {
           </div>
           <button
             disabled={busy}
-            className="w-full rounded-lg bg-espresso px-4 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta disabled:opacity-50"
+            className="min-h-11 w-full rounded-lg bg-espresso px-4 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta active:scale-[0.99] disabled:opacity-50"
           >
             {busy ? 'Creating…' : 'Create restaurant'}
           </button>

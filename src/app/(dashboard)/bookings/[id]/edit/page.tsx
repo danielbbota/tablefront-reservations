@@ -40,7 +40,7 @@ export default async function EditBookingPage({
 
       <form
         action={updateBooking.bind(null, booking.id)}
-        className="mt-6 space-y-4 rounded-2xl border border-linen bg-white p-6 shadow-sm"
+        className="mt-6 space-y-4 rounded-2xl border border-linen bg-white p-6 shadow-card"
       >
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -97,7 +97,7 @@ export default async function EditBookingPage({
           <label htmlFor="notes" className={label}>{t('form.notes')}</label>
           <textarea id="notes" name="notes" rows={2} defaultValue={booking.notes ?? ''} className={input} />
         </div>
-        <button className="w-full rounded-lg bg-espresso px-4 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta">
+        <button className="min-h-11 w-full rounded-lg bg-espresso px-4 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta active:scale-[0.99]">
           {t('form.save')}
         </button>
       </form>

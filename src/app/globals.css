@@ -3,9 +3,8 @@
 /*
  * TableFront brand (from tablesfront.com): warm cream surfaces, espresso ink,
  * caramel-gold accent, terracotta highlights.
- * The app is light-only by design — the widget/dashboard must look identical
- * regardless of the visitor's OS dark-mode preference, so no
- * prefers-color-scheme override here.
+ * Light-only by design — the widget/dashboard must look identical regardless
+ * of the visitor's OS dark-mode preference.
  */
 :root {
   color-scheme: light;
@@ -20,6 +19,16 @@
   --tf-terracotta: #8c4225;
   --tf-green: #4a7c4e;
   --tf-wine: #7c3a3a;
+
+  /* Elevation scale — warm-tinted shadows, one system everywhere. */
+  --shadow-1: 0 1px 2px rgba(26, 18, 8, 0.05);
+  --shadow-2: 0 1px 3px rgba(26, 18, 8, 0.06), 0 4px 12px rgba(26, 18, 8, 0.05);
+  --shadow-3: 0 2px 6px rgba(26, 18, 8, 0.07), 0 12px 28px rgba(26, 18, 8, 0.09);
+
+  /* Motion tokens — one rhythm across the app. */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
 }
 
 @theme inline {
@@ -37,10 +46,16 @@
   --font-sans: var(--font-geist-sans);
   --font-serif: var(--font-playfair);
   --font-mono: var(--font-geist-mono);
+  --shadow-card: var(--shadow-2);
+  --shadow-lift: var(--shadow-3);
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1200px 500px at 85% -10%, rgba(201, 149, 74, 0.1), transparent 60%),
+    radial-gradient(900px 420px at -10% 0%, rgba(140, 66, 37, 0.06), transparent 55%),
+    var(--background);
+  background-attachment: fixed;
   color: var(--foreground);
 }
 
@@ -50,10 +65,38 @@ select,
 textarea {
   color: var(--tf-espresso);
   background-color: #fff;
+  font-variant-numeric: tabular-nums;
 }
 input::placeholder,
 textarea::placeholder {
   color: #8a7f6a;
+}
+
+/* Accessible, on-brand focus ring for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--tf-terracotta);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button,
+a,
+select,
+input[type="checkbox"],
+input[type="date"],
+input[type="time"] {
+  touch-action: manipulation;
+}
+button:not(:disabled),
+a,
+label:has(input[type="checkbox"]) {
+  cursor: pointer;
+}
+
+/* Tabular figures for data (dates, times, counts) — no width wobble. */
+table,
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Entrance animation for page content and cards. */
@@ -69,7 +112,76 @@ textarea::placeholder {
 }
 
 .tf-rise {
-  animation: tf-rise 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: tf-rise 0.45s var(--ease-out) both;
+}
+
+/* Skeleton shimmer for loading states. */
+@keyframes tf-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.tf-skeleton {
+  border-radius: 0.5rem;
+  background: linear-gradient(
+    100deg,
+    var(--tf-sand) 40%,
+    #f8f4ea 50%,
+    var(--tf-sand) 60%
+  );
+  background-size: 200% 100%;
+  animation: tf-shimmer 1.6s linear infinite;
+}
+
+/* Card hover lift — used on interactive cards only. */
+.tf-lift {
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.tf-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-3);
+}
+
+/* Styled toggle switch (Settings "Closed" days). */
+.tf-switch {
+  appearance: none;
+  position: relative;
+  width: 2.4rem;
+  height: 1.35rem;
+  flex: none;
+  border-radius: 999px;
+  background: var(--tf-linen);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.tf-switch::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.tf-switch:checked {
+  background: var(--tf-terracotta);
+}
+.tf-switch:checked::after {
+  transform: translateX(1.05rem);
+}
+
+/* Subtle scrollbar that matches the palette. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tf-linen) transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {
