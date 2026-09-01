@@ -257,6 +257,15 @@ export async function saveSettings(formData: FormData) {
   if (!Number.isInteger(turnTime) || turnTime < 30 || turnTime > 360)
     fail('/settings', 'Dining time must be between 30 and 360 minutes.');
 
+  const timezone = String(formData.get('timezone') ?? '').trim();
+  if (timezone) {
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: timezone });
+    } catch {
+      fail('/settings', `Invalid timezone: ${timezone}`);
+    }
+  }
+
   const hours: OperatingHours = {};
   const TIME_RE = /^\d{2}:\d{2}$/;
   const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -280,6 +289,7 @@ export async function saveSettings(formData: FormData) {
       turn_time_minutes: turnTime,
       operating_hours: hours,
       language,
+      ...(timezone ? { timezone } : {}),
     })
     .eq('id', owner.restaurant_id);
   if (error) fail('/settings', `Could not save settings: ${error.message}`);

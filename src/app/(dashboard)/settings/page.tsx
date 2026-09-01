@@ -1,4 +1,4 @@
-import { Clock, Code2, Globe } from 'lucide-react';
+import { Clock, Code2, Globe, MapPin } from 'lucide-react';
 import { createServerSupabase } from '@/lib/supabase/server';
 import CopyButton from '@/components/copy-button';
 import { saveSettings } from '@/app/actions';
@@ -31,6 +31,9 @@ export default async function SettingsPage({
     .is('time_slot', null)
     .returns<CapacityRule[]>();
   const capByDay = new Map((rules ?? []).map((r) => [r.day_of_week, r.max_covers]));
+
+  const timezones = Intl.supportedValuesOf('timeZone');
+  if (!timezones.includes(restaurant.timezone)) timezones.unshift(restaurant.timezone);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.tablesfront.com';
   const snippet = `<div data-tablefront-widget data-restaurant="${restaurant.id}"></div>\n<script src="${appUrl}/widget.js" async></script>`;
@@ -65,6 +68,26 @@ export default async function SettingsPage({
             ))}
           </select>
           <p className="mt-1 text-xs text-espresso/50">{t('settings.languageHint')}</p>
+        </div>
+
+        <div>
+          <label htmlFor="timezone" className={`${label} flex items-center gap-1.5`}>
+            <MapPin size={14} aria-hidden className="text-caramel" />
+            {t('settings.timezone')}
+          </label>
+          <select
+            id="timezone"
+            name="timezone"
+            defaultValue={restaurant.timezone}
+            className={`${input} mt-1 w-full`}
+          >
+            {timezones.map((tz) => (
+              <option key={tz} value={tz}>
+                {tz.replaceAll('_', ' ')}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-espresso/50">{t('settings.timezoneHint')}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

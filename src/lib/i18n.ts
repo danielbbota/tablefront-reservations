@@ -172,6 +172,8 @@ const dict = {
     'map.turnNote': 'Tables stay occupied for {min} minutes per booking.',
     'settings.turnTime': 'Average dining time (minutes)',
     'settings.turnTimeHint': 'How long a table stays occupied by one booking on the floor map.',
+    'settings.timezone': 'Timezone',
+    'settings.timezoneHint': 'Used for opening hours, the day view clock and booking times.',
   },
   pt: {
     'nav.bookings': 'Reservas',
@@ -325,6 +327,8 @@ const dict = {
     'map.turnNote': 'As mesas ficam ocupadas {min} minutos por reserva.',
     'settings.turnTime': 'Tempo médio de refeição (minutos)',
     'settings.turnTimeHint': 'Quanto tempo uma mesa fica ocupada por reserva no mapa da sala.',
+    'settings.timezone': 'Fuso horário',
+    'settings.timezoneHint': 'Usado no horário de funcionamento, no relógio da vista do dia e nas horas das reservas.',
   },
   de: {
     'nav.bookings': 'Reservierungen',
@@ -478,6 +482,8 @@ const dict = {
     'map.turnNote': 'Tische bleiben {min} Minuten pro Reservierung belegt.',
     'settings.turnTime': 'Durchschnittliche Verweildauer (Minuten)',
     'settings.turnTimeHint': 'Wie lange ein Tisch pro Reservierung auf dem Tischplan belegt bleibt.',
+    'settings.timezone': 'Zeitzone',
+    'settings.timezoneHint': 'Für Öffnungszeiten, die Uhr der Tagesansicht und Reservierungszeiten.',
   },
   fr: {
     'nav.bookings': 'Réservations',
@@ -631,6 +637,8 @@ const dict = {
     'map.turnNote': 'Les tables restent occupées {min} minutes par réservation.',
     'settings.turnTime': 'Durée moyenne du repas (minutes)',
     'settings.turnTimeHint': 'Combien de temps une table reste occupée par réservation sur le plan.',
+    'settings.timezone': 'Fuseau horaire',
+    'settings.timezoneHint': 'Utilisé pour les horaires, l’horloge de la vue du jour et les réservations.',
   },
 } as const;
 
