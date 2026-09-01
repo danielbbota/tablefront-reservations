@@ -16,6 +16,7 @@ import type {
 } from '@/lib/types';
 import DayControls from './day-controls';
 import FloorMap, { type MapBooking, type MapZone } from './floor-map';
+import WalkInButton from './walk-in-button';
 
 const STATUS_STYLE: Record<ServiceStatus, { on: string; off: string }> = {
   arrived: {
@@ -67,6 +68,7 @@ export default async function DayPage({
     { data: floorZones },
     { data: floorTables },
     { data: floorElements },
+    { data: allLinks },
   ] = await Promise.all([
     supabase
       .from('bookings')
@@ -85,9 +87,12 @@ export default async function DayPage({
     supabase.from('floor_zones').select('*').order('sort').returns<FloorZone[]>(),
     supabase.from('floor_tables').select('*').returns<FloorTable[]>(),
     supabase.from('floor_elements').select('*').returns<FloorElement[]>(),
+    supabase
+      .from('booking_tables')
+      .select('booking_id, table_id')
+      .returns<Pick<BookingTable, 'booking_id' | 'table_id'>[]>(),
   ]);
-
-  const showMap = mode === 'map';
+  void mode;
 
   const weekCounts = new Map<string, number>();
   for (const r of weekRows ?? []) {
@@ -107,14 +112,8 @@ export default async function DayPage({
   const cancelled = (bookings ?? []).filter((b) => b.status === 'cancelled');
   const totalCovers = active.reduce((sum, b) => sum + b.party_size, 0);
 
-  const activeIds = active.map((b) => b.id);
-  const { data: links } = activeIds.length
-    ? await supabase
-        .from('booking_tables')
-        .select('booking_id, table_id')
-        .in('booking_id', activeIds)
-        .returns<Pick<BookingTable, 'booking_id' | 'table_id'>[]>()
-    : { data: [] as Pick<BookingTable, 'booking_id' | 'table_id'>[] };
+  const activeIds = new Set(active.map((b) => b.id));
+  const links = (allLinks ?? []).filter((l) => activeIds.has(l.booking_id));
 
   const tablesByBooking = new Map<string, string[]>();
   for (const l of links ?? []) {
@@ -155,8 +154,13 @@ export default async function DayPage({
         ? Number(daySlots[0].slice(0, 2)) * 60 + Number(daySlots[0].slice(3, 5))
         : 0;
 
+  const hasFloor = (floorTables ?? []).length > 0 && mapZones.length > 0;
+
   const mapLabels = {
     table: t('bookings.table'),
+    covers: t('day.covers'),
+    edit: t('bookings.edit'),
+    empty: t('day.empty'),
     free: t('map.free'),
     reserved: t('map.reserved'),
     arrived: t('day.arrived'),
@@ -220,7 +224,7 @@ export default async function DayPage({
             {active.length} {t('day.bookings')} · {totalCovers} {t('day.covers')}
           </p>
         </div>
-        <DayControls date={date} todayLabel={t('day.today')} mode={showMap ? 'map' : undefined} />
+        <DayControls date={date} todayLabel={t('day.today')} />
       </div>
 
       <nav aria-label={t('nav.day')} className="mt-6 grid grid-cols-7 gap-1.5 sm:max-w-md">
@@ -229,7 +233,7 @@ export default async function DayPage({
           return (
             <Link
               key={w.date}
-              href={`/day?date=${w.date}${showMap ? '&mode=map' : ''}`}
+              href={`/day?date=${w.date}`}
               aria-current={selected ? 'date' : undefined}
               className={`tf-lift flex min-h-11 flex-col items-center rounded-xl border px-1 py-2 text-center transition-colors ${
                 selected
@@ -255,24 +259,16 @@ export default async function DayPage({
         })}
       </nav>
 
-      <div className="mt-4 flex gap-1 self-start rounded-full border border-linen bg-white p-1 text-sm shadow-card w-fit">
-        <Link
-          href={`/day?date=${date}`}
-          className={`min-h-9 rounded-full px-4 py-1.5 font-medium transition ${
-            !showMap ? 'bg-espresso text-cream' : 'text-espresso/60 hover:text-espresso'
-          }`}
-        >
-          {t('map.tab.list')}
-        </Link>
-        <Link
-          href={`/day?date=${date}&mode=map`}
-          className={`min-h-9 rounded-full px-4 py-1.5 font-medium transition ${
-            showMap ? 'bg-espresso text-cream' : 'text-espresso/60 hover:text-espresso'
-          }`}
-        >
-          {t('map.tab.map')}
-        </Link>
-      </div>
+      {!hasFloor && (
+        <div className="mt-4 w-fit">
+          <WalkInButton
+            date={date}
+            time={daySlots.length ? daySlots[Math.max(0, daySlots.findIndex((sl) => Number(sl.slice(0, 2)) * 60 + Number(sl.slice(3, 5)) >= initialMinutes))] ?? daySlots[0] : null}
+            label={t('map.walkin')}
+            guestLabel={t('map.walkinName')}
+          />
+        </div>
+      )}
 
       {error && (
         <p role="alert" className="mt-4 rounded-lg bg-wine/10 px-4 py-2.5 text-sm text-wine">
@@ -280,7 +276,7 @@ export default async function DayPage({
         </p>
       )}
 
-      {showMap && (
+      {hasFloor && (
         <FloorMap
           zones={mapZones}
           bookings={mapBookings}
@@ -292,7 +288,7 @@ export default async function DayPage({
         />
       )}
 
-      {!showMap && active.length === 0 && (
+      {!hasFloor && active.length === 0 && (
         <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-linen bg-white p-14 text-center text-espresso/40 shadow-card">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-sand">
             <CalendarX2 size={24} aria-hidden className="text-caramel" />
@@ -301,7 +297,7 @@ export default async function DayPage({
         </div>
       )}
 
-      {!showMap && (
+      {!hasFloor && (
       <div className="mt-6 space-y-6">
         {Array.from(bySlot.entries()).map(([slot, slotBookings], i) => {
           const cap = resolveMaxCovers(restaurant, rules ?? [], date, slot);
@@ -381,7 +377,7 @@ export default async function DayPage({
 
       )}
 
-      {!showMap && cancelled.length > 0 && (
+      {cancelled.length > 0 && (
         <div className="mt-8">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-espresso/40">
             {t('status.cancelled')}

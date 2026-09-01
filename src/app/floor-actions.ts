@@ -231,6 +231,47 @@ export async function assignBookingTable(
   return { ok: true };
 }
 
+/** Walk-in without a table: creates a seated manual booking from the day view. */
+export async function createWalkIn(
+  date: string,
+  time: string,
+  partySize: number,
+  guestLabel: string
+): Promise<{ ok?: true; error?: string }> {
+  const supabase = await createServerSupabase();
+  const { data: owner } = await supabase
+    .from('owners')
+    .select('restaurant_id')
+    .single<{ restaurant_id: string }>();
+  if (!owner) return { error: 'Not logged in.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time))
+    return { error: 'Invalid date/time.' };
+  const party = clamp(Math.round(Number(partySize)), 1, 50);
+
+  const { data: restaurant } = await supabase
+    .from('restaurants')
+    .select('language')
+    .single<Pick<Restaurant, 'language'>>();
+
+  const { error } = await supabase.from('bookings').insert({
+    restaurant_id: owner.restaurant_id,
+    guest_name: String(guestLabel ?? 'Walk-in').slice(0, 40) || 'Walk-in',
+    guest_phone: '',
+    guest_email: '',
+    party_size: party,
+    date,
+    time_slot: time,
+    status: 'confirmed',
+    source: 'manual',
+    service_status: 'seated',
+    guest_lang: restaurant?.language ?? 'en',
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath('/day');
+  return { ok: true };
+}
+
 /** Seat a walk-in directly from the map: creates a seated manual booking. */
 export async function seatWalkIn(
   tableId: string,
