@@ -231,8 +231,20 @@ export default function FloorEditor({
         item.x = snap(Math.min(FLOOR_W - item.w, Math.max(0, p.x - d.dx)));
         item.y = snap(Math.min(FLOOR_H - item.h, Math.max(0, p.y - d.dy)));
       } else {
+        const linear =
+          d.kind === 'element' &&
+          'kind' in item &&
+          (item.kind === 'wall' || item.kind === 'door');
         item.w = snap(Math.min(FLOOR_W - item.x, Math.max(30, p.x - item.x)));
-        item.h = snap(Math.min(FLOOR_H - item.y, Math.max(d.kind === 'element' ? 6 : 30, p.y - item.y)));
+        if (linear) {
+          // Length-only: thickness always resets to the element's default,
+          // which also heals walls/doors stretched before this fix.
+          item.h = ELEMENT_DEFAULTS[(item as ElementDraft).kind].h;
+        } else {
+          item.h = snap(
+            Math.min(FLOOR_H - item.y, Math.max(d.kind === 'element' ? 6 : 30, p.y - item.y))
+          );
+        }
       }
     });
   };
@@ -382,6 +394,15 @@ export default function FloorEditor({
               onPointerDown={(e) => startDrag(e, 'element', el.id, 'move')}
               className="cursor-move"
             >
+              {(el.kind === 'wall' || el.kind === 'door') && (
+                <rect
+                  x={-8}
+                  y={el.h / 2 - 16}
+                  width={el.w + 16}
+                  height={32}
+                  fill="transparent"
+                />
+              )}
               {el.kind === 'wall' && <rect width={el.w} height={el.h} rx={3} fill="#d6cbb2" />}
               {el.kind === 'bar' && (
                 <>
@@ -419,16 +440,29 @@ export default function FloorEditor({
                     strokeDasharray="6 4"
                     rx={6}
                   />
-                  <rect
-                    x={el.w - 6}
-                    y={el.h - 6}
-                    width={14}
-                    height={14}
-                    rx={3}
-                    fill="#8c4225"
-                    className="cursor-nwse-resize"
-                    onPointerDown={(e) => startDrag(e, 'element', el.id, 'resize')}
-                  />
+                  {el.kind === 'wall' || el.kind === 'door' ? (
+                    <rect
+                      x={el.w - 4}
+                      y={el.h / 2 - 11}
+                      width={14}
+                      height={22}
+                      rx={4}
+                      fill="#8c4225"
+                      className="cursor-ew-resize"
+                      onPointerDown={(e) => startDrag(e, 'element', el.id, 'resize')}
+                    />
+                  ) : (
+                    <rect
+                      x={el.w - 6}
+                      y={el.h - 6}
+                      width={14}
+                      height={14}
+                      rx={3}
+                      fill="#8c4225"
+                      className="cursor-nwse-resize"
+                      onPointerDown={(e) => startDrag(e, 'element', el.id, 'resize')}
+                    />
+                  )}
                 </>
               )}
             </g>
