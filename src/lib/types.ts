@@ -18,9 +18,59 @@ export type Restaurant = {
   operating_hours: OperatingHours;
   default_max_covers: number;
   language: Lang;
+  turn_time_minutes: number;
   brand: Record<string, string>;
   created_at: string;
 };
+
+export type FloorZone = {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  sort: number;
+};
+
+export type TableShape = 'rect' | 'round';
+
+export type FloorTable = {
+  id: string;
+  restaurant_id: string;
+  zone_id: string;
+  name: string;
+  seats: number;
+  shape: TableShape;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation: number;
+  combinable_group: string | null;
+};
+
+export type ElementKind = 'wall' | 'bar' | 'door' | 'plant' | 'label';
+
+export type FloorElement = {
+  id: string;
+  restaurant_id: string;
+  zone_id: string;
+  kind: ElementKind;
+  label: string | null;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation: number;
+};
+
+export type BookingTable = {
+  booking_id: string;
+  table_id: string;
+  restaurant_id: string;
+};
+
+/** Floor plan canvas size (SVG viewBox units). */
+export const FLOOR_W = 1000;
+export const FLOOR_H = 700;
 
 export type CapacityRule = {
   id: string;

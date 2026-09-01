@@ -12,11 +12,14 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 export default function DayControls({
   date,
   todayLabel,
+  mode,
 }: {
   date: string;
   todayLabel: string;
+  mode?: string;
 }) {
   const router = useRouter();
+  const suffix = mode ? `&mode=${mode}` : '';
 
   useEffect(() => {
     const id = setInterval(() => router.refresh(), 60_000);
@@ -26,7 +29,7 @@ export default function DayControls({
   function shift(days: number) {
     const d = new Date(date + 'T00:00:00Z');
     d.setUTCDate(d.getUTCDate() + days);
-    router.push(`/day?date=${d.toISOString().slice(0, 10)}`);
+    router.push(`/day?date=${d.toISOString().slice(0, 10)}${suffix}`);
   }
 
   const btn =
@@ -40,7 +43,7 @@ export default function DayControls({
       <input
         type="date"
         value={date}
-        onChange={(e) => e.target.value && router.push(`/day?date=${e.target.value}`)}
+        onChange={(e) => e.target.value && router.push(`/day?date=${e.target.value}${suffix}`)}
         className="rounded-lg border border-linen bg-white px-3 py-2 text-sm text-espresso focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel/30"
       />
       <button type="button" onClick={() => shift(1)} aria-label="Next day" className={btn}>
@@ -48,7 +51,7 @@ export default function DayControls({
       </button>
       <button
         type="button"
-        onClick={() => router.push('/day')}
+        onClick={() => router.push(`/day${mode ? `?mode=${mode}` : ''}`)}
         className="rounded-lg bg-caramel px-4 py-2 text-sm font-semibold text-espresso transition hover:bg-terracotta hover:text-cream active:scale-95"
       >
         {todayLabel}

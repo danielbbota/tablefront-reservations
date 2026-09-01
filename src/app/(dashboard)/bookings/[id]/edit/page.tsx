@@ -3,7 +3,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { updateBooking } from '@/app/actions';
 import { normalizeSlot } from '@/lib/availability';
 import { asLang, getT } from '@/lib/i18n';
-import type { Booking, Restaurant } from '@/lib/types';
+import type { Booking, BookingTable, FloorTable, FloorZone, Restaurant } from '@/lib/types';
 
 const input =
   'mt-1 w-full rounded-lg border border-linen bg-white px-3 py-2.5 text-sm text-espresso focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel/30';
@@ -20,12 +20,22 @@ export default async function EditBookingPage({
   const { error } = await searchParams;
 
   const supabase = await createServerSupabase();
-  const [{ data: restaurant }, { data: booking }] = await Promise.all([
-    supabase.from('restaurants').select('*').single<Restaurant>(),
-    supabase.from('bookings').select('*').eq('id', id).maybeSingle<Booking>(),
-  ]);
+  const [{ data: restaurant }, { data: booking }, { data: zones }, { data: floorTables }, { data: link }] =
+    await Promise.all([
+      supabase.from('restaurants').select('*').single<Restaurant>(),
+      supabase.from('bookings').select('*').eq('id', id).maybeSingle<Booking>(),
+      supabase.from('floor_zones').select('*').order('sort').returns<FloorZone[]>(),
+      supabase.from('floor_tables').select('*').returns<FloorTable[]>(),
+      supabase
+        .from('booking_tables')
+        .select('table_id')
+        .eq('booking_id', id)
+        .limit(1)
+        .maybeSingle<Pick<BookingTable, 'table_id'>>(),
+    ]);
   if (!booking) notFound(); // RLS also hides other restaurants' bookings
   const t = getT(asLang(restaurant?.language));
+  const hasFloor = (floorTables ?? []).length > 0;
 
   return (
     <div className="tf-rise max-w-lg">
@@ -76,7 +86,25 @@ export default async function EditBookingPage({
           </div>
           <div>
             <label htmlFor="table" className={label}>{t('form.table')}</label>
-            <input id="table" name="table" defaultValue={booking.table_number ?? ''} className={input} />
+            {hasFloor ? (
+              <select id="table" name="tableId" defaultValue={link?.table_id ?? ''} className={input}>
+                <option value="">—</option>
+                {(zones ?? []).map((z) => (
+                  <optgroup key={z.id} label={z.name}>
+                    {(floorTables ?? [])
+                      .filter((ft) => ft.zone_id === z.id)
+                      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                      .map((ft) => (
+                        <option key={ft.id} value={ft.id}>
+                          {ft.name} · {ft.seats}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+            ) : (
+              <input id="table" name="table" defaultValue={booking.table_number ?? ''} className={input} />
+            )}
           </div>
         </div>
         <div>

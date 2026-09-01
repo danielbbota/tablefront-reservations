@@ -1,7 +1,7 @@
 import { createServerSupabase } from '@/lib/supabase/server';
 import { createManualBooking } from '@/app/actions';
 import { asLang, getT } from '@/lib/i18n';
-import type { Restaurant } from '@/lib/types';
+import type { FloorTable, FloorZone, Restaurant } from '@/lib/types';
 
 const input =
   'mt-1 w-full rounded-lg border border-linen bg-white px-3 py-2.5 text-sm text-espresso focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel/30';
@@ -14,11 +14,13 @@ export default async function NewBookingPage({
 }) {
   const { error } = await searchParams;
   const supabase = await createServerSupabase();
-  const { data: restaurant } = await supabase
-    .from('restaurants')
-    .select('*')
-    .single<Restaurant>();
+  const [{ data: restaurant }, { data: zones }, { data: floorTables }] = await Promise.all([
+    supabase.from('restaurants').select('*').single<Restaurant>(),
+    supabase.from('floor_zones').select('*').order('sort').returns<FloorZone[]>(),
+    supabase.from('floor_tables').select('*').returns<FloorTable[]>(),
+  ]);
   const t = getT(asLang(restaurant?.language));
+  const hasFloor = (floorTables ?? []).length > 0;
 
   return (
     <div className="tf-rise max-w-lg">
@@ -57,7 +59,25 @@ export default async function NewBookingPage({
           </div>
           <div>
             <label htmlFor="table" className={label}>{t('form.table')}</label>
-            <input id="table" name="table" className={input} />
+            {hasFloor ? (
+              <select id="table" name="tableId" defaultValue="" className={input}>
+                <option value="">—</option>
+                {(zones ?? []).map((z) => (
+                  <optgroup key={z.id} label={z.name}>
+                    {(floorTables ?? [])
+                      .filter((ft) => ft.zone_id === z.id)
+                      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                      .map((ft) => (
+                        <option key={ft.id} value={ft.id}>
+                          {ft.name} · {ft.seats}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+            ) : (
+              <input id="table" name="table" className={input} />
+            )}
           </div>
         </div>
         <div>

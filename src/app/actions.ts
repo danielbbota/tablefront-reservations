@@ -25,6 +25,29 @@ function fail(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolve the table choice from a booking form. Returns undefined when the
+ * form had no floor-table select (free-text table_number is used instead),
+ * null for "no table", or {id, name} for an assigned floor table.
+ */
+async function resolveTableChoice(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  formData: FormData
+): Promise<{ id: string; name: string } | null | undefined> {
+  const raw = formData.get('tableId');
+  if (raw === null) return undefined;
+  const id = String(raw);
+  if (!UUID_RE.test(id)) return null;
+  const { data } = await supabase
+    .from('floor_tables')
+    .select('id, name')
+    .eq('id', id)
+    .maybeSingle<{ id: string; name: string }>();
+  return data ?? null;
+}
+
 export async function login(formData: FormData) {
   const supabase = await createServerSupabase();
   const { error } = await supabase.auth.signInWithPassword({
@@ -114,24 +137,43 @@ export async function createManualBooking(formData: FormData) {
     .select('language')
     .single<Pick<Restaurant, 'language'>>();
 
+  const tableChoice = await resolveTableChoice(supabase, formData);
+  const tableNumber =
+    tableChoice === undefined
+      ? String(formData.get('table') ?? '').trim() || null
+      : tableChoice?.name ?? null;
+
   // Manual bookings deliberately skip the online capacity cap — the cap only
   // throttles the self-serve widget.
-  const { error } = await supabase.from('bookings').insert({
-    restaurant_id: owner.restaurant_id,
-    guest_lang: rest?.language ?? 'en',
-    guest_name: name,
-    guest_phone: String(formData.get('phone') ?? '').trim(),
-    guest_email: String(formData.get('email') ?? '').trim(),
-    party_size: partySize,
-    date,
-    time_slot: time,
-    notes: String(formData.get('notes') ?? '').trim() || null,
-    table_number: String(formData.get('table') ?? '').trim() || null,
-    status: 'confirmed',
-    source: 'manual',
-  });
+  const { data: created, error } = await supabase
+    .from('bookings')
+    .insert({
+      restaurant_id: owner.restaurant_id,
+      guest_lang: rest?.language ?? 'en',
+      guest_name: name,
+      guest_phone: String(formData.get('phone') ?? '').trim(),
+      guest_email: String(formData.get('email') ?? '').trim(),
+      party_size: partySize,
+      date,
+      time_slot: time,
+      notes: String(formData.get('notes') ?? '').trim() || null,
+      table_number: tableNumber,
+      status: 'confirmed',
+      source: 'manual',
+    })
+    .select('id')
+    .single<{ id: string }>();
 
-  if (error) fail('/bookings/new', `Could not create the booking: ${error.message}`);
+  if (error || !created)
+    fail('/bookings/new', `Could not create the booking: ${error?.message}`);
+
+  if (tableChoice) {
+    await supabase.from('booking_tables').insert({
+      booking_id: created.id,
+      table_id: tableChoice.id,
+      restaurant_id: owner.restaurant_id,
+    });
+  }
 
   revalidatePath('/');
   redirect('/');
@@ -151,6 +193,12 @@ export async function updateBooking(bookingId: string, formData: FormData) {
   if (!/^\d{2}:\d{2}$/.test(time)) fail(back, 'A time is required.');
   if (!Number.isInteger(partySize) || partySize < 1) fail(back, 'Invalid party size.');
 
+  const tableChoice = await resolveTableChoice(supabase, formData);
+  const tableNumber =
+    tableChoice === undefined
+      ? String(formData.get('table') ?? '').trim() || null
+      : tableChoice?.name ?? null;
+
   // Owner edits are trusted like manual bookings: no capacity cap check.
   // RLS restricts the update to the owner's own restaurant.
   const { error } = await supabase
@@ -163,11 +211,28 @@ export async function updateBooking(bookingId: string, formData: FormData) {
       date,
       time_slot: time,
       notes: String(formData.get('notes') ?? '').trim() || null,
-      table_number: String(formData.get('table') ?? '').trim() || null,
+      table_number: tableNumber,
     })
     .eq('id', bookingId);
 
   if (error) fail(back, `Could not update the booking: ${error.message}`);
+
+  if (tableChoice !== undefined) {
+    await supabase.from('booking_tables').delete().eq('booking_id', bookingId);
+    if (tableChoice) {
+      const { data: owner } = await supabase
+        .from('owners')
+        .select('restaurant_id')
+        .single<{ restaurant_id: string }>();
+      if (owner) {
+        await supabase.from('booking_tables').insert({
+          booking_id: bookingId,
+          table_id: tableChoice.id,
+          restaurant_id: owner.restaurant_id,
+        });
+      }
+    }
+  }
 
   revalidatePath('/');
   redirect('/');
@@ -184,10 +249,13 @@ export async function saveSettings(formData: FormData) {
 
   const slotInterval = Number(formData.get('slotInterval'));
   const defaultMaxCovers = Number(formData.get('defaultMaxCovers'));
+  const turnTime = Number(formData.get('turnTime') ?? 90);
   if (!Number.isInteger(slotInterval) || slotInterval < 15 || slotInterval > 120)
     fail('/settings', 'Slot interval must be between 15 and 120 minutes.');
   if (!Number.isInteger(defaultMaxCovers) || defaultMaxCovers < 0)
     fail('/settings', 'Default max covers must be 0 or more.');
+  if (!Number.isInteger(turnTime) || turnTime < 30 || turnTime > 360)
+    fail('/settings', 'Dining time must be between 30 and 360 minutes.');
 
   const hours: OperatingHours = {};
   const TIME_RE = /^\d{2}:\d{2}$/;
@@ -209,6 +277,7 @@ export async function saveSettings(formData: FormData) {
     .update({
       slot_interval_minutes: slotInterval,
       default_max_covers: defaultMaxCovers,
+      turn_time_minutes: turnTime,
       operating_hours: hours,
       language,
     })

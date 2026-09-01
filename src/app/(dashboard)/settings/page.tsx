@@ -95,6 +95,21 @@ export default async function SettingsPage({
         </div>
 
         <div>
+          <label htmlFor="turnTime" className={label}>{t('settings.turnTime')}</label>
+          <input
+            id="turnTime"
+            name="turnTime"
+            type="number"
+            min={30}
+            max={360}
+            step={15}
+            defaultValue={restaurant.turn_time_minutes ?? 90}
+            className={`${input} mt-1 w-full`}
+          />
+          <p className="mt-1 text-xs text-espresso/50">{t('settings.turnTimeHint')}</p>
+        </div>
+
+        <div>
           <h2 className="flex items-center gap-1.5 text-sm font-semibold text-espresso"><Clock size={14} aria-hidden className="text-caramel" />{t('settings.hoursTitle')}</h2>
           <p className="mt-1 text-xs text-espresso/50">{t('settings.hoursHint')}</p>
           <div className="mt-4 space-y-2.5">

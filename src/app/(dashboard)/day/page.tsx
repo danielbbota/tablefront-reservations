@@ -2,10 +2,20 @@ import Link from 'next/link';
 import { CalendarX2, Pencil } from 'lucide-react';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { setServiceStatus } from '@/app/actions';
-import { normalizeSlot, nowInTimezone, resolveMaxCovers } from '@/lib/availability';
+import { normalizeSlot, nowInTimezone, resolveMaxCovers, slotsForDate } from '@/lib/availability';
 import { asLang, getT, LOCALE } from '@/lib/i18n';
-import type { Booking, CapacityRule, Restaurant, ServiceStatus } from '@/lib/types';
+import type {
+  Booking,
+  BookingTable,
+  CapacityRule,
+  FloorElement,
+  FloorTable,
+  FloorZone,
+  Restaurant,
+  ServiceStatus,
+} from '@/lib/types';
 import DayControls from './day-controls';
+import FloorMap, { type MapBooking, type MapZone } from './floor-map';
 
 const STATUS_STYLE: Record<ServiceStatus, { on: string; off: string }> = {
   arrived: {
@@ -31,9 +41,9 @@ function addDays(date: string, days: number): string {
 export default async function DayPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; error?: string }>;
+  searchParams: Promise<{ date?: string; error?: string; mode?: string }>;
 }) {
-  const { date: dateParam, error } = await searchParams;
+  const { date: dateParam, error, mode } = await searchParams;
 
   const supabase = await createServerSupabase();
   const { data: restaurant } = await supabase
@@ -50,7 +60,14 @@ export default async function DayPage({
   const weekStart = addDays(date, -3);
   const weekEnd = addDays(date, 3);
 
-  const [{ data: bookings }, { data: rules }, { data: weekRows }] = await Promise.all([
+  const [
+    { data: bookings },
+    { data: rules },
+    { data: weekRows },
+    { data: floorZones },
+    { data: floorTables },
+    { data: floorElements },
+  ] = await Promise.all([
     supabase
       .from('bookings')
       .select('*')
@@ -65,7 +82,12 @@ export default async function DayPage({
       .gte('date', weekStart)
       .lte('date', weekEnd)
       .returns<Pick<Booking, 'date'>[]>(),
+    supabase.from('floor_zones').select('*').order('sort').returns<FloorZone[]>(),
+    supabase.from('floor_tables').select('*').returns<FloorTable[]>(),
+    supabase.from('floor_elements').select('*').returns<FloorElement[]>(),
   ]);
+
+  const showMap = mode === 'map';
 
   const weekCounts = new Map<string, number>();
   for (const r of weekRows ?? []) {
@@ -84,6 +106,73 @@ export default async function DayPage({
   const active = (bookings ?? []).filter((b) => b.status === 'confirmed');
   const cancelled = (bookings ?? []).filter((b) => b.status === 'cancelled');
   const totalCovers = active.reduce((sum, b) => sum + b.party_size, 0);
+
+  const activeIds = active.map((b) => b.id);
+  const { data: links } = activeIds.length
+    ? await supabase
+        .from('booking_tables')
+        .select('booking_id, table_id')
+        .in('booking_id', activeIds)
+        .returns<Pick<BookingTable, 'booking_id' | 'table_id'>[]>()
+    : { data: [] as Pick<BookingTable, 'booking_id' | 'table_id'>[] };
+
+  const tablesByBooking = new Map<string, string[]>();
+  for (const l of links ?? []) {
+    const arr = tablesByBooking.get(l.booking_id) ?? [];
+    arr.push(l.table_id);
+    tablesByBooking.set(l.booking_id, arr);
+  }
+
+  const mapZones: MapZone[] = (floorZones ?? []).map((z) => ({
+    id: z.id,
+    name: z.name,
+    tables: (floorTables ?? [])
+      .filter((x) => x.zone_id === z.id)
+      .map(({ id, name, seats, shape, x, y, w, h, rotation }) => ({
+        id, name, seats, shape, x, y, w, h, rotation,
+      })),
+    elements: (floorElements ?? [])
+      .filter((x) => x.zone_id === z.id)
+      .map(({ id, kind, label, x, y, w, h, rotation }) => ({
+        id, kind, label, x, y, w, h, rotation,
+      })),
+  }));
+
+  const mapBookings: MapBooking[] = active.map((b) => ({
+    id: b.id,
+    name: b.guest_name,
+    party: b.party_size,
+    time: normalizeSlot(b.time_slot),
+    serviceStatus: b.service_status,
+    tableIds: tablesByBooking.get(b.id) ?? [],
+  }));
+
+  const daySlots = slotsForDate(restaurant, date);
+  const initialMinutes =
+    date === today
+      ? nowInTimezone(restaurant.timezone).minutes
+      : daySlots.length
+        ? Number(daySlots[0].slice(0, 2)) * 60 + Number(daySlots[0].slice(3, 5))
+        : 0;
+
+  const mapLabels = {
+    table: t('bookings.table'),
+    free: t('map.free'),
+    reserved: t('map.reserved'),
+    arrived: t('day.arrived'),
+    seated: t('day.seated'),
+    noshow: t('day.noshow'),
+    unassigned: t('map.unassigned'),
+    assignHint: t('map.assignHint'),
+    unassign: t('map.unassign'),
+    walkin: t('map.walkin'),
+    walkinName: t('map.walkinName'),
+    conflict: t('map.conflict'),
+    assignAnyway: t('map.assignAnyway'),
+    noTables: t('map.noTables'),
+    turnNote: t('map.turnNote'),
+    cancel: t('bookings.cancel'),
+  };
 
   const bySlot = new Map<string, Booking[]>();
   for (const b of active) {
@@ -131,7 +220,7 @@ export default async function DayPage({
             {active.length} {t('day.bookings')} · {totalCovers} {t('day.covers')}
           </p>
         </div>
-        <DayControls date={date} todayLabel={t('day.today')} />
+        <DayControls date={date} todayLabel={t('day.today')} mode={showMap ? 'map' : undefined} />
       </div>
 
       <nav aria-label={t('nav.day')} className="mt-6 grid grid-cols-7 gap-1.5 sm:max-w-md">
@@ -140,7 +229,7 @@ export default async function DayPage({
           return (
             <Link
               key={w.date}
-              href={`/day?date=${w.date}`}
+              href={`/day?date=${w.date}${showMap ? '&mode=map' : ''}`}
               aria-current={selected ? 'date' : undefined}
               className={`tf-lift flex min-h-11 flex-col items-center rounded-xl border px-1 py-2 text-center transition-colors ${
                 selected
@@ -166,13 +255,44 @@ export default async function DayPage({
         })}
       </nav>
 
+      <div className="mt-4 flex gap-1 self-start rounded-full border border-linen bg-white p-1 text-sm shadow-card w-fit">
+        <Link
+          href={`/day?date=${date}`}
+          className={`min-h-9 rounded-full px-4 py-1.5 font-medium transition ${
+            !showMap ? 'bg-espresso text-cream' : 'text-espresso/60 hover:text-espresso'
+          }`}
+        >
+          {t('map.tab.list')}
+        </Link>
+        <Link
+          href={`/day?date=${date}&mode=map`}
+          className={`min-h-9 rounded-full px-4 py-1.5 font-medium transition ${
+            showMap ? 'bg-espresso text-cream' : 'text-espresso/60 hover:text-espresso'
+          }`}
+        >
+          {t('map.tab.map')}
+        </Link>
+      </div>
+
       {error && (
         <p role="alert" className="mt-4 rounded-lg bg-wine/10 px-4 py-2.5 text-sm text-wine">
           {error}
         </p>
       )}
 
-      {active.length === 0 && (
+      {showMap && (
+        <FloorMap
+          zones={mapZones}
+          bookings={mapBookings}
+          slots={daySlots}
+          turn={restaurant.turn_time_minutes ?? 90}
+          date={date}
+          initialMinutes={initialMinutes}
+          labels={mapLabels}
+        />
+      )}
+
+      {!showMap && active.length === 0 && (
         <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-linen bg-white p-14 text-center text-espresso/40 shadow-card">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-sand">
             <CalendarX2 size={24} aria-hidden className="text-caramel" />
@@ -181,6 +301,7 @@ export default async function DayPage({
         </div>
       )}
 
+      {!showMap && (
       <div className="mt-6 space-y-6">
         {Array.from(bySlot.entries()).map(([slot, slotBookings], i) => {
           const cap = resolveMaxCovers(restaurant, rules ?? [], date, slot);
@@ -258,7 +379,9 @@ export default async function DayPage({
         })}
       </div>
 
-      {cancelled.length > 0 && (
+      )}
+
+      {!showMap && cancelled.length > 0 && (
         <div className="mt-8">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-espresso/40">
             {t('status.cancelled')}

@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, ClipboardList, Plus, Settings } from 'lucide-react';
+import { CalendarDays, ClipboardList, Map, Plus, Settings } from 'lucide-react';
 
 const ICONS = {
   '/day': CalendarDays,
   '/': ClipboardList,
   '/bookings/new': Plus,
+  '/floor-plan': Map,
   '/settings': Settings,
 } as const;
 

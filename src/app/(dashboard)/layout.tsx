@@ -40,6 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               { href: '/day', label: t('nav.day') },
               { href: '/', label: t('nav.bookings') },
               { href: '/bookings/new', label: t('nav.add') },
+              { href: '/floor-plan', label: t('nav.floor') },
               { href: '/settings', label: t('nav.settings') },
             ]}
           />
