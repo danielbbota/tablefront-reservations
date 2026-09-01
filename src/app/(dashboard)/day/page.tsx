@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { CalendarX2, Pencil } from 'lucide-react';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { setServiceStatus } from '@/app/actions';
-import { normalizeSlot, nowInTimezone, resolveMaxCovers, slotsForDate } from '@/lib/availability';
+import { normalizeSlot, nowInTimezone, resolveMaxCovers, slotsForDate, toMinutes } from '@/lib/availability';
 import { asLang, getT, LOCALE } from '@/lib/i18n';
 import type {
   Booking,
@@ -147,12 +147,13 @@ export default async function DayPage({
   }));
 
   const daySlots = slotsForDate(restaurant, date);
-  const initialMinutes =
-    date === today
-      ? nowInTimezone(restaurant.timezone).minutes
-      : daySlots.length
-        ? Number(daySlots[0].slice(0, 2)) * 60 + Number(daySlots[0].slice(3, 5))
-        : 0;
+  const isToday = date === today;
+  const initialMinutes = nowInTimezone(restaurant.timezone).minutes;
+  const nearestSlot = daySlots.length
+    ? isToday
+      ? [...daySlots].filter((sl) => toMinutes(sl) <= initialMinutes).pop() ?? daySlots[0]
+      : daySlots[0]
+    : null;
 
   const hasFloor = (floorTables ?? []).length > 0 && mapZones.length > 0;
 
@@ -263,7 +264,7 @@ export default async function DayPage({
         <div className="mt-4 w-fit">
           <WalkInButton
             date={date}
-            time={daySlots.length ? daySlots[Math.max(0, daySlots.findIndex((sl) => Number(sl.slice(0, 2)) * 60 + Number(sl.slice(3, 5)) >= initialMinutes))] ?? daySlots[0] : null}
+            time={nearestSlot}
             label={t('map.walkin')}
             guestLabel={t('map.walkinName')}
           />
@@ -284,6 +285,7 @@ export default async function DayPage({
           turn={restaurant.turn_time_minutes ?? 90}
           date={date}
           initialMinutes={initialMinutes}
+          isToday={isToday}
           labels={mapLabels}
         />
       )}

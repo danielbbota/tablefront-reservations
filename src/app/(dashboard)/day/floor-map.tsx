@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Armchair, MapPin, Minus, Pencil, Plus, UserCheck, UserPlus, UserX, X } from 'lucide-react';
+import { Armchair, Clock, MapPin, Minus, Pencil, Plus, UserCheck, UserPlus, UserX, X } from 'lucide-react';
 import { assignBookingTable, createWalkIn, seatWalkIn } from '@/app/floor-actions';
 import { setServiceStatus } from '@/app/actions';
 import { FLOOR_H, FLOOR_W, type ServiceStatus } from '@/lib/types';
@@ -48,19 +48,47 @@ const toMin = (hhmm: string) => {
   return h * 60 + m;
 };
 
-function occupantAt(bookings: MapBooking[], tableId: string, minutes: number, turn: number) {
-  return bookings.find(
-    (b) =>
-      b.tableIds.includes(tableId) &&
-      toMin(b.time) <= minutes &&
-      minutes < toMin(b.time) + turn
+const closestTo = (list: MapBooking[], minutes: number) =>
+  [...list].sort(
+    (a, b) => Math.abs(toMin(a.time) - minutes) - Math.abs(toMin(b.time) - minutes)
+  )[0];
+
+/**
+ * The booking that colors a table RIGHT NOW. Manual service status always
+ * wins over the clock — a 21:00 party marked "seated" at 19:00 turns the
+ * table green immediately. Only unmarked bookings fall back to their
+ * time window (start … start + turn).
+ */
+function occupantNow(bookings: MapBooking[], tableId: string, nowMin: number, turn: number) {
+  const assigned = bookings.filter((b) => b.tableIds.includes(tableId));
+  const seated = assigned.filter((b) => b.serviceStatus === 'seated');
+  if (seated.length) return closestTo(seated, nowMin);
+  const arrived = assigned.filter((b) => b.serviceStatus === 'arrived');
+  if (arrived.length) return closestTo(arrived, nowMin);
+  if (nowMin < 0) return undefined;
+  const inWindow = assigned.filter(
+    (b) => toMin(b.time) <= nowMin && nowMin < toMin(b.time) + turn
   );
+  return closestTo(inWindow, nowMin);
 }
 
-/** Earliest booking on this table that starts after `minutes` — the "next up" hint. */
-function nextOn(bookings: MapBooking[], tableId: string, minutes: number) {
+/** Upcoming unmarked booking on this table — the small "next up" hint. */
+function nextOn(
+  bookings: MapBooking[],
+  tableId: string,
+  nowMin: number,
+  occupantId?: string
+) {
   return bookings
-    .filter((b) => b.tableIds.includes(tableId) && toMin(b.time) > minutes)
+    .filter(
+      (b) =>
+        b.tableIds.includes(tableId) &&
+        b.id !== occupantId &&
+        b.serviceStatus !== 'seated' &&
+        b.serviceStatus !== 'arrived' &&
+        b.serviceStatus !== 'no_show' &&
+        toMin(b.time) > nowMin
+    )
     .sort((a, b) => toMin(a.time) - toMin(b.time))[0];
 }
 
@@ -86,6 +114,7 @@ export default function FloorMap({
   turn,
   date,
   initialMinutes,
+  isToday,
   labels,
 }: {
   zones: MapZone[];
@@ -94,6 +123,7 @@ export default function FloorMap({
   turn: number;
   date: string;
   initialMinutes: number;
+  isToday: boolean;
   labels: Record<string, string>;
 }) {
   const router = useRouter();
@@ -114,17 +144,28 @@ export default function FloorMap({
   const [tableWalkinParty, setTableWalkinParty] = useState(2);
   const [walkinBusy, setWalkinBusy] = useState(false);
 
-  const slotIndex = useMemo(() => {
-    if (!slots.length) return 0;
-    let best = 0;
-    slots.forEach((s, i) => {
-      if (toMin(s) <= initialMinutes) best = i;
-    });
-    return best;
-  }, [slots, initialMinutes]);
-  const [ti, setTi] = useState(slotIndex);
-  const timeMin = slots.length ? toMin(slots[Math.min(ti, slots.length - 1)]) : initialMinutes;
-  const timeLabel = slots.length ? slots[Math.min(ti, slots.length - 1)] : '—';
+  // Live clock in the restaurant's timezone: seeded by the server, advanced
+  // locally every 15s, re-synced on every refresh.
+  const [clockMin, setClockMin] = useState(initialMinutes);
+  useEffect(() => {
+    setClockMin(initialMinutes);
+    const t0 = Date.now();
+    const id = setInterval(
+      () => setClockMin((initialMinutes + Math.round((Date.now() - t0) / 60000)) % 1440),
+      15_000
+    );
+    return () => clearInterval(id);
+  }, [initialMinutes]);
+
+  const baseMin = isToday ? clockMin : -1;
+  const clockLabel = `${String(Math.floor(clockMin / 60)).padStart(2, '0')}:${String(
+    clockMin % 60
+  ).padStart(2, '0')}`;
+  const walkinSlot = slots.length
+    ? isToday
+      ? [...slots].filter((sl) => toMin(sl) <= clockMin).pop() ?? slots[0]
+      : slots[0]
+    : null;
 
   const zone = zones[Math.min(zi, zones.length - 1)];
   const allTables = useMemo(() => zones.flatMap((z) => z.tables), [zones]);
@@ -140,8 +181,6 @@ export default function FloorMap({
   }, [items]);
 
   const assigningBooking = items.find((b) => b.id === assigning) ?? null;
-
-  const refresh = () => startTransition(() => router.refresh());
 
   /** Optimistic service-status toggle shared by list rows and table panel. */
   const toggleStatus = (b: MapBooking, st: ServiceStatus) => {
@@ -183,11 +222,12 @@ export default function FloorMap({
   };
 
   const doWalkIn = (tableId: string | null, party: number) => {
+    if (!walkinSlot) return;
     setWalkinBusy(true);
     startTransition(async () => {
       const res = tableId
-        ? await seatWalkIn(tableId, date, timeLabel, party, labels.walkinName)
-        : await createWalkIn(date, timeLabel, party, labels.walkinName);
+        ? await seatWalkIn(tableId, date, walkinSlot, party, labels.walkinName)
+        : await createWalkIn(date, walkinSlot, party, labels.walkinName);
       if (res.error) setError(res.error);
       setWalkinBusy(false);
       router.refresh();
@@ -210,8 +250,6 @@ export default function FloorMap({
       const zIdx = zones.findIndex((z) => z.tables.some((t) => t.id === tid));
       if (zIdx >= 0) setZi(zIdx);
       setSelTable(tid);
-      const si = slots.indexOf(b.time);
-      if (si >= 0) setTi(si);
       setAssigning(null);
     } else {
       setAssigning((cur) => (cur === b.id ? null : b.id));
@@ -226,7 +264,7 @@ export default function FloorMap({
         .filter((b) => b.tableIds.includes(selected.id))
         .sort((a, b) => toMin(a.time) - toMin(b.time))
     : [];
-  const selectedOccupant = selected ? occupantAt(items, selected.id, timeMin, turn) : null;
+  const selectedOccupant = selected ? occupantNow(items, selected.id, baseMin, turn) : null;
 
   const legend = [
     ['free', labels.free],
@@ -301,11 +339,11 @@ export default function FloorMap({
                 </button>
                 <button
                   onClick={() => doWalkIn(null, walkinParty)}
-                  disabled={!slots.length || walkinBusy}
+                  disabled={!walkinSlot || walkinBusy}
                   className="ml-1 flex min-h-9 items-center gap-1.5 rounded-lg bg-leaf px-3.5 py-2 text-xs font-semibold text-cream transition hover:opacity-90 active:scale-95 disabled:opacity-50"
                 >
                   <UserPlus size={14} aria-hidden />
-                  {timeLabel}
+                  {walkinSlot ?? '—'}
                 </button>
               </div>
             </div>
@@ -397,22 +435,13 @@ export default function FloorMap({
                     </button>
                   ))}
                 </div>
-                {slots.length > 0 && (
-                  <div className="flex min-w-56 flex-1 items-center gap-3 sm:max-w-xs">
-                    <input
-                      type="range"
-                      min={0}
-                      max={slots.length - 1}
-                      value={Math.min(ti, slots.length - 1)}
-                      onChange={(e) => setTi(Number(e.target.value))}
-                      aria-label={timeLabel}
-                      className="w-full accent-terracotta"
-                    />
-                    <span className="tabular rounded-lg bg-espresso px-3 py-1.5 font-serif text-sm font-semibold text-cream">
-                      {timeLabel}
-                    </span>
-                  </div>
-                )}
+                <span
+                  aria-live="off"
+                  className="tabular flex items-center gap-2 rounded-xl bg-espresso px-4 py-2 font-serif text-base font-semibold tracking-wide text-cream shadow-card"
+                >
+                  <Clock size={15} aria-hidden className="text-caramel" />
+                  {clockLabel}
+                </span>
               </div>
 
               <div className="mt-2.5 flex flex-wrap items-center gap-3 text-xs text-espresso/60">
@@ -499,8 +528,8 @@ export default function FloorMap({
                   ))}
 
                   {zone.tables.map((t) => {
-                    const occ = occupantAt(items, t.id, timeMin, turn);
-                    const next = occ ? undefined : nextOn(items, t.id, timeMin);
+                    const occ = occupantNow(items, t.id, baseMin, turn);
+                    const next = nextOn(items, t.id, baseMin, occ?.id);
                     const state = occ ? occ.serviceStatus ?? 'reserved' : 'free';
                     const s = STATE_FILL[state];
                     const isSel = selTable === t.id;
@@ -636,7 +665,7 @@ export default function FloorMap({
                       </div>
                       <button
                         onClick={() => doWalkIn(selected.id, tableWalkinParty)}
-                        disabled={!slots.length || walkinBusy}
+                        disabled={!walkinSlot || walkinBusy}
                         className="flex min-h-11 items-center gap-2 rounded-lg bg-leaf px-5 py-2.5 text-sm font-semibold text-cream transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                       >
                         <UserPlus size={15} aria-hidden />
