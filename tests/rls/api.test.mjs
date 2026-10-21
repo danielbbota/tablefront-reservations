@@ -19,7 +19,7 @@ import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { STAGING_URL, assertStagingOnly, getAnonKey, lit, sql } from './staging.mjs';
+import { assertStagingOnly, getAnonKey, lit, sql, stagingUrl } from './staging.mjs';
 
 const RUN = randomUUID().slice(0, 8);
 const ids = {
@@ -125,13 +125,13 @@ function cleanupSql() {
 
 before(async () => {
   const project = assertStagingOnly();
-  console.log(`  target: ${project.name} (${project.ref}) via ${STAGING_URL}`);
+  console.log(`  target: ${project.name} (${project.ref}) via ${stagingUrl()}`);
   const anonKey = getAnonKey();
   sql(seedSql());
 
-  anon = createClient(STAGING_URL, anonKey, clientOpts);
-  asA = createClient(STAGING_URL, anonKey, clientOpts);
-  asB = createClient(STAGING_URL, anonKey, clientOpts);
+  anon = createClient(stagingUrl(), anonKey, clientOpts);
+  asA = createClient(stagingUrl(), anonKey, clientOpts);
+  asB = createClient(stagingUrl(), anonKey, clientOpts);
   const a = await asA.auth.signInWithPassword(ownerA);
   assert.equal(a.error, null, `owner A sign-in failed: ${a.error?.message}`);
   const b = await asB.auth.signInWithPassword(ownerB);

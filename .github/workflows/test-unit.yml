@@ -1,0 +1,41 @@
+name: Unit tests
+
+# Fast, hermetic checks on every push to the hardening branch. Unit tests need
+# no Supabase credentials: they never touch the network. Integration, RLS and
+# e2e suites run locally against staging (see TESTING.md).
+on:
+  push:
+    branches: [week/platform-hardening]
+  pull_request:
+    branches: [week/platform-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: vitest (unit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test:unit
+        env:
+          CI: true

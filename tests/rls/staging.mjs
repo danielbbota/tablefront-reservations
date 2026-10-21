@@ -1,14 +1,28 @@
 // Shared helpers for the RLS tenant-isolation tests.
-// Everything here talks ONLY to the STAGING Supabase project, through the
-// logged-in Supabase CLI (Management API). No database password and no
+// Everything here talks ONLY to the STAGING Supabase project. SQL runs through
+// the logged-in Supabase CLI (Management API): no database password and no
 // service-role key are needed or stored on disk.
+//
+// The target comes from TEST_SUPABASE_URL (see .env.test.example); the shared
+// guard in tests/helpers/staging.ts refuses the production project.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolveTestSupabase } from '../helpers/staging.ts';
 
-/** Project ref of tablefront-reservations-staging. Override with RLS_TEST_PROJECT_REF. */
-export const STAGING_REF = process.env.RLS_TEST_PROJECT_REF ?? 'zbzrbodraecmihzdvvot';
-export const STAGING_URL = `https://${STAGING_REF}.supabase.co`;
+let resolved;
+/** Resolve (once) and validate the staging target. Throws StagingGuardError otherwise. */
+function target() {
+  if (!resolved) resolved = resolveTestSupabase({ needServiceRole: false });
+  return resolved;
+}
+
+/** Project ref of the staging project (from TEST_SUPABASE_URL). */
+export function stagingRef() {
+  return target().ref;
+}
+/** https://<ref>.supabase.co of the staging project. */
+export function stagingUrl() {
+  return target().url;
+}
 
 /** Parse the first JSON value (object or array) found in CLI output. */
 function parseJson(text) {
@@ -38,28 +52,21 @@ function runCli(args, { allowFail = false } = {}) {
 }
 
 /**
- * Hard guard: refuse to run unless the target ref is an ACTIVE project whose
- * name marks it as staging. Also refuses if that same ref is what .env.local
- * points at AND the name does not say staging (belt and braces).
+ * Hard guard: refuse to run unless TEST_SUPABASE_URL is a non-production
+ * project that the logged-in Supabase CLI can see, with "staging" in its name.
  */
 export function assertStagingOnly() {
+  const { ref } = target();
   const { json } = runCli(['projects', 'list', '-o', 'json']);
   const projects = Array.isArray(json?.projects) ? json.projects : Array.isArray(json) ? json : [];
-  const project = projects.find((p) => p.ref === STAGING_REF || p.id === STAGING_REF);
+  const project = projects.find((p) => p.ref === ref || p.id === ref);
   if (!project) {
-    throw new Error(`Refusing to run: project ref ${STAGING_REF} is not visible to the logged-in Supabase CLI account.`);
+    throw new Error(`Refusing to run: project ref ${ref} is not visible to the logged-in Supabase CLI account (run \`supabase login\`).`);
   }
   if (!/staging/i.test(project.name ?? '')) {
-    throw new Error(`Refusing to run: project ${STAGING_REF} is named "${project.name}", which does not contain "staging".`);
+    throw new Error(`Refusing to run: project ${ref} is named "${project.name}", which does not contain "staging".`);
   }
-  const envLocal = resolve(process.cwd(), '.env.local');
-  if (existsSync(envLocal)) {
-    const m = readFileSync(envLocal, 'utf8').match(/NEXT_PUBLIC_SUPABASE_URL=\s*https:\/\/([a-z0-9]+)\.supabase\.co/);
-    if (m && m[1] !== STAGING_REF) {
-      // Expected: .env.local points at a different (live) project. Nothing to do.
-    }
-  }
-  return { ref: STAGING_REF, name: project.name, status: project.status };
+  return { ref, name: project.name, status: project.status };
 }
 
 /**
@@ -67,7 +74,7 @@ export function assertStagingOnly() {
  * of the last SELECT. Retries the CLI's transient "login role" timeouts.
  */
 export function sql(text, { file, retries = 3 } = {}) {
-  const args = ['db', 'query', '--linked', '--project-ref', STAGING_REF];
+  const args = ['db', 'query', '--linked', '--project-ref', stagingRef()];
   if (file) args.push('-f', file); else args.push(text);
   let lastErr;
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -86,19 +93,11 @@ export function sql(text, { file, retries = 3 } = {}) {
 }
 
 /**
- * The anon (publishable) key for staging. Taken from SUPABASE_STAGING_ANON_KEY
- * if set, otherwise fetched in-process from the Management API and kept only
- * in memory for the duration of the test run.
+ * The anon (publishable) key for staging: TEST_SUPABASE_ANON_KEY, or fetched
+ * in-process from the Management API and kept only in memory for the run.
  */
 export function getAnonKey() {
-  if (process.env.SUPABASE_STAGING_ANON_KEY) return process.env.SUPABASE_STAGING_ANON_KEY;
-  const { json } = runCli(['projects', 'api-keys', '--project-ref', STAGING_REF, '-o', 'json']);
-  const list = Array.isArray(json) ? json : json?.api_keys ?? json?.keys ?? [];
-  const anon = list.find((k) => k.name === 'anon' || k.type === 'publishable');
-  if (!anon?.api_key) {
-    throw new Error('Could not resolve the staging anon key. Set SUPABASE_STAGING_ANON_KEY in .env.staging.');
-  }
-  return anon.api_key;
+  return target().anonKey;
 }
 
 /** SQL-literal helpers for templating fixtures. */

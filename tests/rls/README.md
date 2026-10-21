@@ -11,14 +11,17 @@ npm run test:rls -- api   # integration layer only
 
 ## Guard rails
 
-- Targets only the project ref in `RLS_TEST_PROJECT_REF`
-  (default `zbzrbodraecmihzdvvot`, *tablefront-reservations-staging*).
-- Before anything runs, `tests/rls/staging.mjs` lists the CLI account's projects and
-  **refuses** unless that ref exists and its name contains "staging".
-- Never reads `.env.local`. No service-role key or DB password is required or stored:
-  SQL runs through `supabase db query --linked --project-ref …` (Management API,
-  needs `supabase login`), and the anon key is fetched in-process (or taken from
-  `.env.staging`, see `env.staging.example`).
+- The target comes from `TEST_SUPABASE_URL` in `.env.test` (see
+  `.env.test.example`). The shared guard in `tests/helpers/staging.ts`
+  **refuses** the production project ref and the project `.env.local` points at.
+- Before anything runs, `tests/rls/staging.mjs` additionally lists the CLI
+  account's projects and **refuses** unless that ref exists and its name
+  contains "staging".
+- Never reads the keys in `.env.local`. No service-role key or DB password is
+  required or stored: SQL runs through `supabase db query --linked
+  --project-ref …` (Management API, needs `supabase login`), and the anon key
+  comes from `TEST_SUPABASE_ANON_KEY` or is fetched in-process.
+- Requires Node ≥ 22.18 (imports the TypeScript guard directly).
 
 ## What it covers
 
@@ -55,3 +58,9 @@ bookings, can edit them). A final block re-reads tenant B from outside RLS
   with `@supabase/supabase-js`, hits PostgREST like the dashboard does, and
   deletes the fixtures in `after()`. Stale `rls-test-*` fixtures older than one
   hour are swept at the start of each run.
+
+## Known failures (as of 2026-10-21)
+
+Three checks fail on staging on purpose until migration 0005 is applied; the
+fix is drafted in `tests/rls/proposed/0005_tenant_isolation_fixes.sql`. See
+AUDIT.md section 2 ("The three confirmed gaps").
