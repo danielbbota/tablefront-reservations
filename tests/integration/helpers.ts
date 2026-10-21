@@ -69,6 +69,65 @@ export async function createFixtureRestaurant(overrides: Partial<Restaurant> = {
   };
 }
 
+export type OwnerFixture = {
+  userId: string;
+  email: string;
+  password: string;
+  cleanup: () => Promise<void>;
+};
+
+/**
+ * Create a throwaway owner (Auth user + `owners` row) for a fixture restaurant
+ * on staging. Email prefix `int-owner-` marks it; cleanup deletes the user
+ * (the `owners` row cascades with the restaurant).
+ */
+export async function createFixtureOwner(restaurantId: string, run: string): Promise<OwnerFixture> {
+  const supabase = adminClient();
+
+  // Sweep owner users left behind by crashed runs older than one hour.
+  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  for (const u of users?.users ?? []) {
+    if (/^int-owner-.*@example\.test$/.test(u.email ?? '') && u.created_at < cutoff) {
+      await supabase.auth.admin.deleteUser(u.id);
+    }
+  }
+
+  const email = `int-owner-${run}@example.test`;
+  const password = `Int-${randomUUID()}`;
+  const { data: created, error: userErr } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (userErr || !created.user) throw new Error(`could not create fixture owner: ${userErr?.message}`);
+
+  const { error: ownerErr } = await supabase
+    .from('owners')
+    .insert({ id: created.user.id, restaurant_id: restaurantId, email });
+  if (ownerErr) {
+    await supabase.auth.admin.deleteUser(created.user.id);
+    throw new Error(`could not link fixture owner: ${ownerErr.message}`);
+  }
+
+  return {
+    userId: created.user.id,
+    email,
+    password,
+    cleanup: async () => {
+      await supabase.auth.admin.deleteUser(created.user.id);
+    },
+  };
+}
+
+/** Anon-key client signed in as a fixture owner: what the dashboard's cookie client is, under RLS. */
+export async function ownerClient(owner: Pick<OwnerFixture, 'email' | 'password'>): Promise<SupabaseClient> {
+  const client = anonClient();
+  const { error } = await client.auth.signInWithPassword({ email: owner.email, password: owner.password });
+  if (error) throw new Error(`could not sign in fixture owner: ${error.message}`);
+  return client;
+}
+
 /** YYYY-MM-DD for `daysFromNow` days ahead, in UTC (fixtures use dates well inside the horizon). */
 export function isoDateFromNow(daysFromNow: number): string {
   const d = new Date();

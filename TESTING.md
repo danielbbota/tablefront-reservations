@@ -8,8 +8,8 @@ at). Unit tests never touch the network at all.
 | Script | Tool | Needs staging? | What it covers |
 |---|---|---|---|
 | `npm test` | Vitest | integration part does | unit + integration |
-| `npm run test:unit` | Vitest | no | pure logic: availability/capacity math, i18n, CORS, request validation of the public API, the staging guard itself |
-| `npm run test:integration` | Vitest | yes | the public widget API route handlers against staging: config, availability, booking creation, atomic cover cap (incl. a concurrency race), tenant scoping |
+| `npm run test:unit` | Vitest | no | pure logic: availability/capacity math, i18n, CORS, request validation of the public API, the staging guard itself, and the hermetic booking-flow lock-in (`booking-flow.test.ts`, see below) |
+| `npm run test:integration` | Vitest | yes | the public widget API route handlers against staging: config, availability, booking creation, atomic cover cap (incl. a concurrency race), tenant scoping; plus the booking-flow lock-in with real owners, RLS and the real `create_widget_booking()` (`booking-flow.test.ts`) |
 | `npm run test:e2e` | Playwright | yes | the real app in Chromium: owner login/logout, dashboard redirects, manual bookings + cancel/re-confirm, the embedded guest widget end to end, admin API, CORS over HTTP |
 | `npm run test:rls` | node:test + SQL | yes | Row Level Security tenant isolation (see `tests/rls/README.md`) |
 | `npm run test:all` | all of the above | yes | unit → integration → rls → e2e |
@@ -66,6 +66,19 @@ stubbed. Route handlers are called directly with a `NextRequest`; the Supabase
 client is mocked to prove invalid input is rejected before any DB access.
 Time-dependent code uses `vi.useFakeTimers()`.
 
+`tests/unit/booking-flow.test.ts` locks in how booking works today, end to end
+but hermetically: the real booking and availability route handlers, the real
+`createManualBooking` / `saveSettings` server actions and the real email module
+run against `tests/helpers/fake-supabase.ts`, an in-memory PostgREST fake that
+mirrors the schema (defaults, CHECKs, unique indexes, `time` normalisation,
+calendar-date validation), the RLS policies (`db.asOwner(userId)` vs
+`db.asAdmin()`) and the body of `create_widget_booking()` from migration 0003.
+The `resend` package is mocked, so the test asserts on the exact `to`, subject
+and body Resend would have been given. The clock is frozen at 2026-10-21.
+It covers: a guest booking with every field; rejection at the slot cap; owner
+caps per weekday/slot (including Settings round trips) and the manual override;
+tenant scoping; the confirmation and owner emails.
+
 ### Integration (`tests/integration`)
 
 `tests/integration/setup.ts` runs first in every file: it resolves the staging
@@ -75,6 +88,30 @@ Resend key so no email is ever sent. Each file creates its own throwaway
 restaurant (`slug = test-int-<run>`) and deletes it in `afterAll`; leftovers
 older than one hour from crashed runs are swept on the next run. Files run one
 at a time (`fileParallelism: false`).
+
+`tests/integration/booking-flow.test.ts` is the staging counterpart of the unit
+lock-in: two restaurants, each with a real Auth owner
+(`createFixtureOwner`, email `int-owner-<run>@example.test`, swept after an
+hour like the restaurants), the real `create_widget_booking()` function, real
+RLS through `ownerClient()` (anon key + password sign-in, exactly what the
+dashboard's cookie client is), and the `resend` package mocked so the guest and
+owner emails can be inspected. Every test books its own time slot so tests
+never share covers.
+
+### Expected failures (`it.fails`)
+
+Where today's behaviour is wrong, the booking-flow files contain the test for
+the **correct** behaviour marked `it.fails`, with the AUDIT.md item in a
+comment above it. Vitest counts them as "expected fail" while the bug exists;
+once a fix lands the test starts passing, Vitest reports it as failed, and the
+marker must be removed. Current set (2026-10-21):
+
+| Test | AUDIT.md | Where |
+|---|---|---|
+| Impossible calendar date (`2026-11-31`) is refused with 400, not 500 | L1 | unit + integration (integration skips itself when no such date falls inside the 60-day window) |
+| Off-grid confirmed covers count toward the slot window they fall into | M3 | unit (availability) + integration (availability and the function) |
+| With `NEXT_PUBLIC_APP_URL` unset the cancel link must not point at production | L9 | unit |
+| `create_widget_booking()` cannot be called with the public anon key | C1 / F1 | integration (flip once migration 0005 is applied to staging) |
 
 ### End to end (`tests/e2e`)
 
@@ -138,5 +175,6 @@ staging service-role key and the Supabase CLI; if you later want them in CI, add
   re-materialises them. Also delete a stale `.next/dev/lock` left by a killed
   dev server.
 - **Leftover fixtures on staging** – rows with slugs `test-int-*`, `test-e2e-*`,
-  `rls-test-*` and users `e2e-owner-*@example.test` / `rls-test-owner-*@example.test`
-  are test fixtures; every runner sweeps ones older than an hour.
+  `rls-test-*` and users `int-owner-*@example.test` / `e2e-owner-*@example.test` /
+  `rls-test-owner-*@example.test` are test fixtures; every runner sweeps ones
+  older than an hour.
