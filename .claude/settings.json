@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(npm run *)", "Bash(npm test*)", "Bash(npm install*)", "Bash(npx *)",
+      "Bash(git status*)", "Bash(git diff*)", "Bash(git log*)", "Bash(git add*)",
+      "Bash(git push origin week/platform-hardening*)",
+      "Bash(ls*)", "Bash(cat*)", "Bash(grep*)", "Bash(find*)", "Bash(mkdir*)"
+    ],
+    "deny": [
+      "Bash(git push origin main*)", "Bash(git merge*)", "Bash(git push --force*)",
+      "Bash(rm -rf*)", "Bash(vercel*)", "Read(./.env.production*)"
+    ]
+  }
+}
