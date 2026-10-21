@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:rls": "node --env-file-if-exists=.env.staging tests/rls/run.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
