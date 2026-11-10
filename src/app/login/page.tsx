@@ -20,7 +20,7 @@ export default async function LoginPage({
           TableFront
         </h1>
         <p className="mt-1.5 text-sm text-espresso/60">
-          Sign in to your restaurant dashboard
+          Sign in to your dashboard
         </p>
 
         {error && (

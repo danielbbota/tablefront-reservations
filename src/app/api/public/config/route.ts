@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
   if (!restaurantId) return corsJson({ error: 'restaurant is required' }, 400);
 
   // select('*'): works whether or not migration 0006 has been applied.
-  const { data: restaurant } = await createAdminClient()
+  const supabase = createAdminClient();
+  const { data: restaurant } = await supabase
     .from('restaurants')
     .select('*')
     .eq('id', restaurantId)
@@ -43,8 +44,15 @@ export async function GET(req: NextRequest) {
   };
 
   if (businessType === 'stays') {
+    const { data: units } = await supabase
+      .from('stay_units')
+      .select('max_guests')
+      .eq('restaurant_id', restaurant.id)
+      .eq('active', true)
+      .returns<{ max_guests: number }[]>();
     return corsJson({
       ...base,
+      maxGuests: Math.max(1, ...(units ?? []).map((u) => u.max_guests)),
       horizonDays: STAY_HORIZON_DAYS,
       maxNights: STAY_MAX_NIGHTS,
       checkInTime: (restaurant.check_in_time ?? '15:00').slice(0, 5),

@@ -19,7 +19,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: "TableFront — Reservations",
-  description: "Commission-free table reservations by TableFront.",
+  description: "Commission-free reservations for restaurants, stays and appointments by TableFront.",
 };
 
 export default function RootLayout({

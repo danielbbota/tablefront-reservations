@@ -74,6 +74,22 @@ const en = {
   'pay.page.expired': 'The payment was not completed in time and the booking was released. Please book again.',
   'pay.page.notFound': 'Booking not found.',
   'cancel.refundNote': 'If you paid online, {business} will handle any refund directly with you.',
+  // settings for appointments businesses
+  'vset.appts.subtitle': 'Language, opening hours, currency and payment for',
+  'vset.appts.slotInterval': 'Booking grid (minutes)',
+  'vset.appts.hoursTitle': 'Opening hours',
+  'vset.appts.hoursHint':
+    'When clients can book. Each professional follows these hours unless you give them their own under Team.',
+  'vset.err.currency': 'Choose a currency.',
+  'vset.err.slotInterval': 'The booking grid must be between 15 and 120 minutes.',
+  'vset.err.hours': '{day}: opening time must be before closing time.',
+  // guest cancel page — appointments
+  'cancel.appt.title': 'Cancel appointment',
+  'cancel.appt.intro': 'Do you want to cancel this appointment at {business}?',
+  'cancel.appt.confirm': 'Yes, cancel my appointment',
+  'cancel.appt.done': 'Your appointment has been cancelled.',
+  'cancel.appt.already': 'This appointment has already been cancelled.',
+  'cancel.appt.past': 'This appointment is in the past and can no longer be cancelled online.',
 } as const;
 
 type Dict = Record<keyof typeof en, string>;
@@ -146,6 +162,20 @@ const pt: Dict = {
   'pay.page.expired': 'O pagamento não foi concluído a tempo e a reserva foi libertada. Por favor reserve novamente.',
   'pay.page.notFound': 'Reserva não encontrada.',
   'cancel.refundNote': 'Se pagou online, {business} trata de qualquer reembolso diretamente consigo.',
+  'vset.appts.subtitle': 'Idioma, horário de funcionamento, moeda e pagamento de',
+  'vset.appts.slotInterval': 'Intervalo da agenda (minutos)',
+  'vset.appts.hoursTitle': 'Horário de funcionamento',
+  'vset.appts.hoursHint':
+    'Quando os clientes podem marcar. Cada profissional segue este horário, a menos que lhe dê um horário próprio em Equipa.',
+  'vset.err.currency': 'Escolha uma moeda.',
+  'vset.err.slotInterval': 'O intervalo da agenda tem de estar entre 15 e 120 minutos.',
+  'vset.err.hours': '{day}: a hora de abertura tem de ser anterior à de fecho.',
+  'cancel.appt.title': 'Cancelar marcação',
+  'cancel.appt.intro': 'Quer cancelar esta marcação em {business}?',
+  'cancel.appt.confirm': 'Sim, cancelar a minha marcação',
+  'cancel.appt.done': 'A sua marcação foi cancelada.',
+  'cancel.appt.already': 'Esta marcação já foi cancelada.',
+  'cancel.appt.past': 'Esta marcação já passou e já não pode ser cancelada online.',
 };
 
 const de: Dict = {
@@ -216,6 +246,20 @@ const de: Dict = {
   'pay.page.expired': 'Die Zahlung wurde nicht rechtzeitig abgeschlossen und die Buchung wurde freigegeben. Bitte buchen Sie erneut.',
   'pay.page.notFound': 'Buchung nicht gefunden.',
   'cancel.refundNote': 'Falls Sie online bezahlt haben, klärt {business} eine Erstattung direkt mit Ihnen.',
+  'vset.appts.subtitle': 'Sprache, Öffnungszeiten, Währung und Zahlung für',
+  'vset.appts.slotInterval': 'Buchungsraster (Minuten)',
+  'vset.appts.hoursTitle': 'Öffnungszeiten',
+  'vset.appts.hoursHint':
+    'Wann Kunden buchen können. Alle Mitarbeitenden folgen diesen Zeiten, sofern Sie ihnen unter Team keine eigenen geben.',
+  'vset.err.currency': 'Wählen Sie eine Währung.',
+  'vset.err.slotInterval': 'Das Buchungsraster muss zwischen 15 und 120 Minuten liegen.',
+  'vset.err.hours': '{day}: Die Öffnungszeit muss vor der Schließzeit liegen.',
+  'cancel.appt.title': 'Termin stornieren',
+  'cancel.appt.intro': 'Möchten Sie diesen Termin bei {business} stornieren?',
+  'cancel.appt.confirm': 'Ja, meinen Termin stornieren',
+  'cancel.appt.done': 'Ihr Termin wurde storniert.',
+  'cancel.appt.already': 'Dieser Termin wurde bereits storniert.',
+  'cancel.appt.past': 'Dieser Termin liegt in der Vergangenheit und kann nicht mehr online storniert werden.',
 };
 
 const fr: Dict = {
@@ -286,6 +330,20 @@ const fr: Dict = {
   'pay.page.expired': "Le paiement n'a pas été finalisé à temps et la réservation a été libérée. Veuillez réserver à nouveau.",
   'pay.page.notFound': 'Réservation introuvable.',
   'cancel.refundNote': 'Si vous avez payé en ligne, {business} gère tout remboursement directement avec vous.',
+  'vset.appts.subtitle': 'Langue, horaires d’ouverture, devise et paiement pour',
+  'vset.appts.slotInterval': 'Grille de réservation (minutes)',
+  'vset.appts.hoursTitle': 'Horaires d’ouverture',
+  'vset.appts.hoursHint':
+    'Quand les clients peuvent réserver. Chaque professionnel suit ces horaires, sauf si vous lui en donnez d’autres dans Équipe.',
+  'vset.err.currency': 'Choisissez une devise.',
+  'vset.err.slotInterval': 'La grille de réservation doit être comprise entre 15 et 120 minutes.',
+  'vset.err.hours': '{day} : l’heure d’ouverture doit précéder l’heure de fermeture.',
+  'cancel.appt.title': 'Annuler le rendez-vous',
+  'cancel.appt.intro': 'Voulez-vous annuler ce rendez-vous chez {business} ?',
+  'cancel.appt.confirm': 'Oui, annuler mon rendez-vous',
+  'cancel.appt.done': 'Votre rendez-vous a été annulé.',
+  'cancel.appt.already': 'Ce rendez-vous a déjà été annulé.',
+  'cancel.appt.past': 'Ce rendez-vous est passé et ne peut plus être annulé en ligne.',
 };
 
 export const sharedDict = { en, pt, de, fr } as const;

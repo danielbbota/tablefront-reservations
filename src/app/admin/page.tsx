@@ -15,8 +15,9 @@ const label = 'block text-sm font-medium text-espresso';
 
 /**
  * Internal admin console — protected by the ADMIN_SECRET, which is sent as a
- * header with each request and never stored. Creates a restaurant + owner
- * login and shows the embed snippet to hand to the client.
+ * header with each request and never stored. Creates a business (restaurant,
+ * stays or appointments) + owner login and shows the embed snippet to hand
+ * to the client.
  */
 export default function AdminPage() {
   const [secret, setSecret] = useState('');
@@ -37,6 +38,7 @@ export default function AdminPage() {
       body: JSON.stringify({
         name: f.get('name'),
         slug: f.get('slug'),
+        businessType: f.get('businessType'),
         timezone: f.get('timezone'),
         language: f.get('language'),
         slotIntervalMinutes: Number(f.get('slotInterval')),
@@ -59,7 +61,7 @@ export default function AdminPage() {
           TableFront admin
         </h1>
         <p className="mt-1.5 text-sm text-espresso/60">
-          Create a restaurant and its owner login.
+          Create a business and its owner login.
         </p>
 
         <form
@@ -77,9 +79,17 @@ export default function AdminPage() {
             />
           </div>
           <hr className="border-linen/60" />
+          <div>
+            <label className={label}>Product</label>
+            <select name="businessType" defaultValue="restaurant" className={input}>
+              <option value="restaurant">Restaurant / bar — table reservations</option>
+              <option value="stays">Stays — hotel, guesthouse, Airbnb</option>
+              <option value="appointments">Appointments — clinic, barber, salon</option>
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={label}>Restaurant name</label>
+              <label className={label}>Business name</label>
               <input name="name" required className={input} />
             </div>
             <div>
@@ -126,7 +136,7 @@ export default function AdminPage() {
             disabled={busy}
             className="min-h-11 w-full rounded-lg bg-espresso px-4 py-2.5 text-sm font-semibold text-cream transition hover:bg-terracotta active:scale-[0.99] disabled:opacity-50"
           >
-            {busy ? 'Creating…' : 'Create restaurant'}
+            {busy ? 'Creating…' : 'Create business'}
           </button>
           {error && (
             <p className="rounded-lg bg-wine/10 px-3 py-2.5 text-sm text-wine">{error}</p>
