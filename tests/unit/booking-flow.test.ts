@@ -490,7 +490,11 @@ describe('3. the owner-set cap per time slot is respected and the manual overrid
       guest_lang: 'en', // restaurant language
     });
     expect(db.rpcCalls).toHaveLength(callsBefore); // never goes through create_widget_booking
-    expect(emailsSend).not.toHaveBeenCalled(); // no guest confirmation for manual bookings today
+    // The guest gets the same confirmation (with cancel link) as a widget booking; no owner notice.
+    expect(emailsSend).toHaveBeenCalledTimes(1);
+    const [confirmation] = sentTo('grace@example.test');
+    expect(confirmation.subject).toBe(`Booking confirmed — ${A.name}`);
+    expect(confirmation.text).toContain(`${APP_URL}/cancel/${manual?.cancel_token}`);
 
     // The over-cap slot now shows 0 online, and the widget stays blocked.
     expect((await remaining(A.id as string, MONDAY)).get('19:00')).toBe(0);
@@ -499,6 +503,7 @@ describe('3. the owner-set cap per time slot is respected and the manual overrid
 
   it('manual override is not bounded by the online party-size limit or the slot grid', async () => {
     expect(await redirectOf(createManualBooking(manualForm({ date: MONDAY, time: '19:15', partySize: '20', name: 'Big Table' })))).toBe('/');
+    expect(emailsSend).not.toHaveBeenCalled(); // no guest email typed → nothing to send
     expect(db.tables.bookings).toEqual([
       expect.objectContaining({ restaurant_id: A.id, party_size: 20, time_slot: '19:15:00', source: 'manual', guest_phone: '', guest_email: '' }),
     ]);
