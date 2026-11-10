@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase/server';
+import { leaveIfNotRestaurant } from '@/lib/business';
 import { createManualBooking } from '@/app/actions';
 import { asLang, getT } from '@/lib/i18n';
 import type { FloorTable, FloorZone, Restaurant } from '@/lib/types';
@@ -20,6 +21,7 @@ export default async function NewBookingPage({
     supabase.from('floor_tables').select('*').returns<FloorTable[]>(),
   ]);
   const t = getT(asLang(restaurant?.language));
+  leaveIfNotRestaurant(restaurant);
   const hasFloor = (floorTables ?? []).length > 0;
 
   return (

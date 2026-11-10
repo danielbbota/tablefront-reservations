@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CalendarPlus, Mail, Phone, Search, StickyNote } from 'lucide-react';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { leaveIfNotRestaurant } from '@/lib/business';
 import { setBookingStatus } from '@/app/actions';
 import { normalizeSlot, nowInTimezone } from '@/lib/availability';
 import { asLang, getT } from '@/lib/i18n';
@@ -21,6 +22,7 @@ export default async function BookingsPage({
     .select('*')
     .single<Restaurant>();
   const t = getT(asLang(restaurant?.language));
+  leaveIfNotRestaurant(restaurant);
   const today = restaurant
     ? nowInTimezone(restaurant.timezone).date
     : new Date().toISOString().slice(0, 10);

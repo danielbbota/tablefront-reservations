@@ -2,17 +2,37 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, ClipboardList, Map, Plus, Settings } from 'lucide-react';
+import {
+  BedDouble,
+  CalendarDays,
+  CalendarRange,
+  ClipboardList,
+  Map,
+  Plus,
+  Scissors,
+  Settings,
+  Users,
+} from 'lucide-react';
 
 const ICONS = {
-  '/day': CalendarDays,
-  '/': ClipboardList,
-  '/bookings/new': Plus,
-  '/floor-plan': Map,
-  '/settings': Settings,
+  day: CalendarDays,
+  list: ClipboardList,
+  plus: Plus,
+  map: Map,
+  settings: Settings,
+  calendar: CalendarRange,
+  units: BedDouble,
+  services: Scissors,
+  team: Users,
 } as const;
 
-export type NavItem = { href: keyof typeof ICONS; label: string };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: keyof typeof ICONS;
+  /** Active only on this exact path (for a section's index page). */
+  exact?: boolean;
+};
 
 /** Primary nav with icon + label and a visible active state. */
 export default function Nav({ items }: { items: NavItem[] }) {
@@ -20,10 +40,9 @@ export default function Nav({ items }: { items: NavItem[] }) {
 
   return (
     <nav aria-label="Main" className="flex flex-wrap items-center gap-1">
-      {items.map(({ href, label }) => {
-        const Icon = ICONS[href];
-        const active =
-          href === '/' ? pathname === '/' : pathname.startsWith(href);
+      {items.map(({ href, label, icon, exact }) => {
+        const Icon = ICONS[icon];
+        const active = href === '/' || exact ? pathname === href : pathname.startsWith(href);
         return (
           <Link
             key={href}
