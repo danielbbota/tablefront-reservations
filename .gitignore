@@ -12,6 +12,11 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/tests/e2e/.state/
 
 # next.js
 /.next/
@@ -40,3 +45,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+!.env.test.example
+
+# Supabase CLI scratch (written by `supabase db query --linked`)
+supabase/.temp/
