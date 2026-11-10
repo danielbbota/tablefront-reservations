@@ -1,3 +1,4 @@
+import { groupByCategory } from '@/lib/appointments/catalog';
 import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { corsJson, corsPreflight } from '@/lib/cors';
@@ -71,17 +72,15 @@ export async function GET(req: NextRequest) {
     business: { id: business.id, name: business.name },
     currency: currencyOf(business),
     paymentMode: setup ? setup.mode : 'none',
-    services: (services ?? [])
-      .filter((s) => offered.has(s.id))
-      .map((s) => ({
-        id: s.id,
-        name: s.name,
-        category: s.category,
-        description: s.description,
-        durationMinutes: s.duration_minutes,
-        priceCents: s.price_cents,
-        dueNowCents: paymentTerms(s.price_cents, setup).amountDueCents,
-      })),
+    services: groupByCategory((services ?? []).filter((s) => offered.has(s.id))).map((s) => ({
+      id: s.id,
+      name: s.name,
+      category: s.category,
+      description: s.description,
+      durationMinutes: s.duration_minutes,
+      priceCents: s.price_cents,
+      dueNowCents: paymentTerms(s.price_cents, setup).amountDueCents,
+    })),
     staff: (staff ?? [])
       .map((s) => ({
         id: s.id,

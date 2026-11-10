@@ -120,7 +120,9 @@ export default async function PayPage({
     return card(
       <>
         {title}
-        <p className="mt-3 rounded-lg bg-leaf/10 px-4 py-3 text-sm text-leaf">{t('pay.page.confirmed')}</p>
+        <p className="mt-3 rounded-lg bg-leaf/10 px-4 py-3 text-sm text-leaf">
+          {t(row.paid_cents > 0 ? 'pay.page.confirmed' : 'pay.page.confirmedUnpaid')}
+        </p>
         {summary}
       </>
     );

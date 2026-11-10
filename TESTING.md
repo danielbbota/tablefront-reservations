@@ -79,6 +79,33 @@ It covers: a guest booking with every field; rejection at the slot cap; owner
 caps per weekday/slot (including Settings round trips) and the manual override;
 tenant scoping; the confirmation and owner emails.
 
+#### Database behaviour without a database server
+
+`tests/helpers/pglite.ts` applies every file in `supabase/migrations` to PGlite
+(PostgreSQL compiled to WebAssembly, in-process) with the Supabase roles,
+default privileges and `auth.uid()` stubbed. Two unit files use it, so they run
+in `npm run test:unit` with no network:
+
+- `verticals-db.test.ts` – migration 0006 itself: `create_stay_reservation()` /
+  `create_appointment()` (overlaps, back-to-back stays, buffers, payment holds
+  and their expiry), EXECUTE grants per role, RLS per tenant, composite foreign
+  keys across tenants, the `business_type` guard, feed cascades.
+- `payments-flow.test.ts` – online payment end to end: the real booking routes
+  and the real Stripe webhook against that schema through
+  `scripts/local/supabase.mjs`, with only Stripe's HTTP API and the Resend SDK
+  faked. Hold → Checkout for the server-computed amount on the business's own
+  account → signed webhook → confirmed + emails once; expiry, Stripe failure,
+  replay, live-mode and "not connected yet" paths.
+
+The other new unit files are pure logic or request validation:
+`stays-pricing-availability`, `stays-ical` (parsing, sync planning, export),
+`stays-sync` (which feed URLs the server will fetch), `stays-api-validation`,
+`payments`, and `appointments-slots` / `-api-validation` / `-actions` / `-email`.
+
+Not covered by an automated test yet: the stays and appointments dashboards and
+widgets in a browser (the Playwright suite still only drives the restaurant
+product), and a real Stripe test-mode round trip.
+
 ### Integration (`tests/integration`)
 
 `tests/integration/setup.ts` runs first in every file: it resolves the staging

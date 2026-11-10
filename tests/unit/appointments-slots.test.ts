@@ -299,3 +299,25 @@ describe('staffIsFree (owner edits)', () => {
     expect(staffIsFree('ana', SUN, 22 * 60, cut, [], [], NOW)).toBe(true);
   });
 });
+
+describe('groupByCategory (service list shown to guests)', async () => {
+  const { groupByCategory } = await import('@/lib/appointments/catalog');
+  const svc = (name: string, category: string | null) => ({ name, category });
+
+  it('keeps each category together, in order of first appearance, without reordering inside it', () => {
+    const sorted = groupByCategory([
+      svc('Cut', 'Hair'),
+      svc('Cut + beard', 'Hair'),
+      svc('Beard', 'Beard'),
+      svc('Colour', 'Hair'),
+      svc('Consultation', null),
+      svc('Trim', 'Beard'),
+    ]);
+    expect(sorted.map((s) => s.name)).toEqual(['Cut', 'Cut + beard', 'Colour', 'Beard', 'Trim', 'Consultation']);
+  });
+  it('does not mutate its input', () => {
+    const input = [svc('B', 'x'), svc('A', 'y'), svc('C', 'x')];
+    groupByCategory(input);
+    expect(input.map((s) => s.name)).toEqual(['B', 'A', 'C']);
+  });
+});

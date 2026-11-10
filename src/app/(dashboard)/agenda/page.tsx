@@ -165,8 +165,8 @@ export default async function AgendaPage({
     <div className="tf-rise">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-[1.7rem] font-semibold capitalize tracking-tight text-espresso">
-            {dateLabel}
+          <h1 className="font-serif text-[1.7rem] font-semibold tracking-tight text-espresso">
+            {dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}
             {date === today && (
               <span className="ml-3 inline-block translate-y-[-3px] rounded-full bg-caramel/20 px-3 py-1 align-middle font-sans text-xs font-semibold uppercase tracking-wide text-terracotta">
                 {t('common.today')}

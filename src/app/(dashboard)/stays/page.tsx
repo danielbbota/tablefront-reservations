@@ -95,19 +95,33 @@ export default async function StaysCalendarPage({
     return {
       date,
       day: d,
-      weekday: dt.toLocaleDateString(LOCALE[lang], { weekday: 'short', timeZone: 'UTC' }),
+      // pt-PT spells "short" weekdays out ("segunda"): keep three letters.
+      weekday: dt
+        .toLocaleDateString(LOCALE[lang], { weekday: 'short', timeZone: 'UTC' })
+        .replace('.', '')
+        .slice(0, 3),
       weekend: dt.getUTCDay() === 0 || dt.getUTCDay() === 6,
       today: date === today,
     };
   });
   const monthLabel = (() => {
     const [y, m, d] = from.split('-').map(Number);
-    return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(LOCALE[lang], {
+    const label = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(LOCALE[lang], {
       month: 'long',
       year: 'numeric',
       timeZone: 'UTC',
     });
+    return label.charAt(0).toUpperCase() + label.slice(1);
   })();
+
+  // Double-booked reservations share a row: give each half the height so
+  // both stay visible instead of one hiding the other.
+  const lane = new Map<string, 0 | 1>();
+  for (const unit of units ?? []) {
+    live
+      .filter((r) => r.unit_id === unit.id && conflicts.has(r.id))
+      .forEach((r, i) => lane.set(r.id, i % 2 === 0 ? 0 : 1));
+  }
 
   const href = (nextFrom: string, nextSpan = span) =>
     `/stays?from=${nextFrom}${nextSpan === 30 ? '&days=30' : ''}`;
@@ -144,7 +158,7 @@ export default async function StaysCalendarPage({
           <h1 className="font-serif text-[1.7rem] font-semibold tracking-tight text-espresso">
             {t('stay.calendar.title')}
           </h1>
-          <p className="mt-0.5 text-sm capitalize text-espresso/55">{monthLabel}</p>
+          <p className="mt-0.5 text-sm text-espresso/55">{monthLabel}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link href={href(addDays(from, -span))} className={pill} aria-label={t('common.previous')}>
@@ -353,16 +367,21 @@ export default async function StaysCalendarPage({
                           key={r.id}
                           href={`/stays/reservations/${r.id}`}
                           title={`${label} · ${r.check_in} → ${r.check_out} · ${sourceLabel(r.source, t)}`}
-                          className={`pointer-events-auto absolute bottom-1.5 top-1.5 flex items-center gap-1 truncate rounded-md px-2 text-xs font-medium shadow-card transition hover:brightness-110 ${
-                            clash ? 'ring-2 ring-wine ring-offset-1' : ''
+                          className={`pointer-events-auto absolute flex items-center gap-1 truncate rounded-md px-2 font-medium shadow-card transition hover:brightness-110 ${
+                            clash ? 'text-[10px] ring-2 ring-wine' : 'bottom-1.5 top-1.5 text-xs'
                           } ${pending ? 'border border-dashed border-espresso/50' : ''}`}
                           style={{
                             ...pos,
+                            ...(clash
+                              ? lane.get(r.id) === 1
+                                ? { top: '52%', bottom: 3 }
+                                : { top: 3, bottom: '52%' }
+                              : {}),
                             background: pending ? '#f1e3c8' : color.bg,
                             color: pending ? '#1a1208' : color.fg,
                           }}
                         >
-                          {clash && <AlertTriangle size={12} aria-hidden className="flex-none" />}
+                          {clash && <AlertTriangle size={10} aria-hidden className="flex-none" />}
                           <span className="truncate">{label}</span>
                         </Link>
                       );
