@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendGuestCancellation } from '@/lib/email';
+import { sendGuestCancellation, sendGuestConfirmation } from '@/lib/email';
 import type {
   Booking,
   BookingStatus,
@@ -132,10 +132,11 @@ export async function createManualBooking(formData: FormData) {
     fail('/bookings/new', 'Invalid party size.');
 
   // Guest emails for manual bookings default to the restaurant's language.
+  // The full row is needed for the confirmation email below.
   const { data: rest } = await supabase
     .from('restaurants')
-    .select('language')
-    .single<Pick<Restaurant, 'language'>>();
+    .select('*')
+    .single<Restaurant>();
 
   const tableChoice = await resolveTableChoice(supabase, formData);
   const tableNumber =
@@ -161,8 +162,8 @@ export async function createManualBooking(formData: FormData) {
       status: 'confirmed',
       source: 'manual',
     })
-    .select('id')
-    .single<{ id: string }>();
+    .select()
+    .single<Booking>();
 
   if (error || !created)
     fail('/bookings/new', `Could not create the booking: ${error?.message}`);
@@ -174,6 +175,11 @@ export async function createManualBooking(formData: FormData) {
       restaurant_id: owner.restaurant_id,
     });
   }
+
+  // Same confirmation (with cancel link) the widget sends, when the owner
+  // typed a guest email. Swallows its own errors; no owner notice — the
+  // owner just made the booking themselves.
+  if (created.guest_email && rest) await sendGuestConfirmation(rest, created);
 
   revalidatePath('/');
   redirect('/');
