@@ -5,7 +5,7 @@ import { normalizeSlot } from './availability';
 import { getT, LOCALE, asLang } from './i18n';
 
 const from = () => process.env.EMAIL_FROM || 'TableFront <onboarding@resend.dev>';
-const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || 'https://app.tablesfront.com';
+export const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || 'https://app.tablesfront.com';
 
 function resend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -51,7 +51,7 @@ function cancelLine(lang: Lang, booking: Booking): string {
  * All senders swallow their own errors: a failed email must never fail the
  * booking itself. Callers still await them (serverless kills stray promises).
  */
-async function send(to: string, subject: string, text: string) {
+export async function send(to: string, subject: string, text: string) {
   if (!to) return;
   try {
     const { error } = await resend().emails.send({ from: from(), to, subject, text });

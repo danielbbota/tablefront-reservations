@@ -3,7 +3,8 @@ import { createServerClient } from '@supabase/ssr';
 
 /**
  * Refreshes the Supabase session cookie and gates the dashboard (Next 16 proxy convention): everything
- * except the public widget API, widget.js, login and admin requires a session.
+ * except the public widget API, the widget scripts, the guest cancel / payment
+ * pages, login and admin requires a session.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -50,8 +51,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except public API, cron, admin, guest cancel page,
-    // widget script and static assets.
-    '/((?!api/public|api/admin|api/cron|admin|cancel|widget\\.js|_next/static|_next/image|favicon\\.ico).*)',
+    // Everything except public API, cron, Stripe webhook, admin, the guest
+    // cancel and payment pages, widget scripts and static assets.
+    '/((?!api/public|api/admin|api/cron|api/stripe|admin|cancel|pay/|widget[\\w-]*\\.js|_next/static|_next/image|favicon\\.ico).*)',
   ],
 };

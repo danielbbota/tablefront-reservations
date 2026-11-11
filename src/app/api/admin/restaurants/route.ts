@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { OperatingHours } from '@/lib/types';
+import { BUSINESS_TYPES, type BusinessType, type OperatingHours } from '@/lib/types';
 
 const DEFAULT_HOURS: OperatingHours = {
   '0': { open: '18:00', close: '22:00', closed: false },
@@ -12,10 +12,19 @@ const DEFAULT_HOURS: OperatingHours = {
   '6': { open: '18:00', close: '22:00', closed: false },
 };
 
+/** Clinics, barbers and salons: daytime hours, closed on Sunday. */
+const DEFAULT_APPOINTMENT_HOURS: OperatingHours = Object.fromEntries(
+  ['0', '1', '2', '3', '4', '5', '6'].map((d) => [
+    d,
+    { open: '09:00', close: '19:00', closed: d === '0' },
+  ])
+);
+
 /**
  * POST /api/admin/restaurants — admin-only (x-admin-secret header).
- * Creates the restaurant, the owner auth user + owners row, and returns
- * the embed snippet and login credentials.
+ * Creates the business (a restaurant unless `businessType` says "stays" or
+ * "appointments"), the owner auth user + owners row, and returns the embed
+ * snippet and login credentials.
  */
 export async function POST(req: NextRequest) {
   const secret = process.env.ADMIN_SECRET;
@@ -36,6 +45,15 @@ export async function POST(req: NextRequest) {
   const language = ['en', 'pt', 'de', 'fr'].includes(String(body.language))
     ? String(body.language)
     : 'en';
+  const businessType: BusinessType = BUSINESS_TYPES.includes(body.businessType)
+    ? body.businessType
+    : 'restaurant';
+  if (body.businessType !== undefined && body.businessType !== businessType) {
+    return NextResponse.json(
+      { error: `businessType must be one of: ${BUSINESS_TYPES.join(', ')}` },
+      { status: 400 }
+    );
+  }
   const slotInterval = Number(body.slotIntervalMinutes ?? 30);
   const defaultMaxCovers = Number(body.defaultMaxCovers ?? 20);
   const ownerEmail = String(body.ownerEmail ?? '').trim().toLowerCase();
@@ -62,7 +80,12 @@ export async function POST(req: NextRequest) {
       language,
       slot_interval_minutes: slotInterval,
       default_max_covers: defaultMaxCovers,
-      operating_hours: body.operatingHours ?? DEFAULT_HOURS,
+      operating_hours:
+        body.operatingHours ??
+        (businessType === 'appointments' ? DEFAULT_APPOINTMENT_HOURS : DEFAULT_HOURS),
+      // Only sent for the new products, so creating a restaurant keeps working
+      // on a database that has not run migration 0006 yet.
+      ...(businessType !== 'restaurant' ? { business_type: businessType } : {}),
     })
     .select()
     .single();
@@ -112,7 +135,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(
     {
-      restaurant: { id: restaurant.id, name, slug },
+      restaurant: { id: restaurant.id, name, slug, businessType },
       owner: { email: ownerEmail },
       dashboardUrl: appUrl,
       embedSnippet,

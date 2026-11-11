@@ -5,7 +5,12 @@
  *   <div data-tablefront-widget data-restaurant="RESTAURANT_ID"></div>
  *   <script src="https://app.tablesfront.com/widget.js" async></script>
  *
- * Language follows the restaurant's dashboard setting (en/pt/de/fr);
+ * The same snippet serves every TableFront product. This file holds the
+ * restaurant flow; for a stays or appointments business it loads
+ * widget-stays.js / widget-appointments.js on demand and hands them a small
+ * context (see makeContext below).
+ *
+ * Language follows the business's dashboard setting (en/pt/de/fr);
  * override per-embed with data-lang="pt" on the mount div if ever needed.
  *
  * Theme by setting CSS custom properties on any ancestor of the mount div:
@@ -162,6 +167,42 @@
     });
   }
 
+  var LOCALES = { en: 'en-GB', pt: 'pt-PT', de: 'de-DE', fr: 'fr-FR' };
+
+  // Registry for the other products' renderers. Their scripts call
+  // TableFrontWidget.register('<type>', function (ctx) { ... }).
+  var REG = (window.TableFrontWidget = window.TableFrontWidget || {
+    renderers: {},
+    queue: {},
+    loading: {},
+  });
+  REG.register = function (type, renderer) {
+    REG.renderers[type] = renderer;
+    var waiting = REG.queue[type] || [];
+    REG.queue[type] = [];
+    waiting.forEach(function (ctx) { renderer(ctx); });
+  };
+
+  function loadVertical(type, ctx) {
+    if (REG.renderers[type]) {
+      REG.renderers[type](ctx);
+      return;
+    }
+    (REG.queue[type] = REG.queue[type] || []).push(ctx);
+    if (REG.loading[type]) return;
+    REG.loading[type] = true;
+    var tag = document.createElement('script');
+    tag.src = ORIGIN + '/widget-' + type + '.js';
+    tag.async = true;
+    tag.onerror = function () {
+      REG.loading[type] = false;
+      var waiting = REG.queue[type] || [];
+      REG.queue[type] = [];
+      waiting.forEach(function (c) { c.fail(); });
+    };
+    document.head.appendChild(tag);
+  }
+
   function initWidget(mount) {
     var restaurantId = mount.getAttribute('data-restaurant');
     if (!restaurantId || mount.__tfInit) return;
@@ -208,8 +249,94 @@
           state.maxParty = cfg.maxPartySize || state.maxParty;
           state.horizonDays = cfg.horizonDays || state.horizonDays;
         }
+        var type = cfg && cfg.businessType;
+        if (type === 'stays' || type === 'appointments') {
+          loadVertical(type, makeContext(cfg));
+          return;
+        }
         render();
       });
+
+    // What a product script (widget-stays.js, widget-appointments.js) gets.
+    function makeContext(cfg) {
+      var lang = I18N[state.lang] ? state.lang : 'en';
+      var locale = LOCALES[lang];
+      function request(path, init) {
+        return fetch(ORIGIN + path, init)
+          .then(function (r) {
+            return r.json().then(
+              function (d) { return { ok: r.ok, status: r.status, d: d }; },
+              function () { return { ok: false, status: r.status, d: {} }; }
+            );
+          })
+          .catch(function () { return { ok: false, status: 0, d: {} }; });
+      }
+      return {
+        root: root,
+        mount: mount,
+        origin: ORIGIN,
+        businessId: restaurantId,
+        config: cfg,
+        lang: lang,
+        locale: locale,
+        el: el,
+        fmt: fmt,
+        isoDate: isoDate,
+        // Shared strings: name, phone, email, genericError, loadError.
+        T: T,
+        addCss: function (css) {
+          var extra = document.createElement('style');
+          extra.textContent = css;
+          shadow.appendChild(extra);
+        },
+        // Both resolve to { ok, status, d } and never reject.
+        getJson: function (path) { return request(path); },
+        postJson: function (path, body) {
+          return request(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+        },
+        money: function (cents) {
+          try {
+            return new Intl.NumberFormat(locale, {
+              style: 'currency',
+              currency: cfg.currency || 'EUR',
+            }).format(cents / 100);
+          } catch (e) {
+            return (cents / 100).toFixed(2) + ' ' + (cfg.currency || 'EUR');
+          }
+        },
+        // "2026-07-12" → "Sun, 12 Jul" in the guest's language.
+        formatDate: function (iso, options) {
+          var p = String(iso).split('-').map(Number);
+          return new Date(Date.UTC(p[0], p[1] - 1, p[2])).toLocaleDateString(
+            locale,
+            Object.assign({ weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }, options || {})
+          );
+        },
+        checkIcon: function () {
+          var check = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          check.setAttribute('class', 'tf-check');
+          check.setAttribute('viewBox', '0 0 52 52');
+          check.setAttribute('aria-hidden', 'true');
+          check.innerHTML = '<circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/>';
+          return check;
+        },
+        // Put a button into its "working" state: disabled, spinner + text.
+        busy: function (button, text) {
+          button.disabled = true;
+          button.textContent = '';
+          button.appendChild(el('span', { class: 'tf-spinner', 'aria-hidden': 'true' }));
+          button.appendChild(document.createTextNode(text));
+        },
+        fail: function () {
+          root.textContent = '';
+          root.appendChild(el('p', { class: 'tf-error', text: T('genericError') }));
+        },
+      };
+    }
 
     function render() {
       var today = new Date();

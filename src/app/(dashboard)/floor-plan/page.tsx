@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase/server';
+import { leaveIfNotRestaurant } from '@/lib/business';
 import { asLang, getT } from '@/lib/i18n';
 import type { FloorElement, FloorTable, FloorZone, Restaurant } from '@/lib/types';
 import type { ZonePayload } from '@/app/floor-actions';
@@ -8,11 +9,12 @@ export default async function FloorPlanPage() {
   const supabase = await createServerSupabase();
   const [{ data: restaurant }, { data: zones }, { data: tables }, { data: elements }] =
     await Promise.all([
-      supabase.from('restaurants').select('name, language').single<Pick<Restaurant, 'name' | 'language'>>(),
+      supabase.from('restaurants').select('*').single<Restaurant>(),
       supabase.from('floor_zones').select('*').order('sort').returns<FloorZone[]>(),
       supabase.from('floor_tables').select('*').returns<FloorTable[]>(),
       supabase.from('floor_elements').select('*').returns<FloorElement[]>(),
     ]);
+  leaveIfNotRestaurant(restaurant);
   const t = getT(asLang(restaurant?.language));
 
   const initialZones: ZonePayload[] = (zones ?? []).map((z, i) => ({

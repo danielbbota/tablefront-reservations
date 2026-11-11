@@ -3,12 +3,14 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizeSlot, nowInTimezone } from '@/lib/availability';
 import { asLang, getT } from '@/lib/i18n';
 import { sendGuestCancellation, sendOwnerCancelNotice } from '@/lib/email';
-import type { Booking, Restaurant } from '@/lib/types';
+import type { Appointment, Booking, Restaurant, StayReservation } from '@/lib/types';
+import { AppointmentCancel, StayCancel } from './vertical';
 
 /**
  * Public, tokenized guest cancellation page — no login. The unguessable
  * cancel_token (from the confirmation/reminder email) is the credential.
- * Rendered in the language the guest booked in.
+ * Rendered in the language the guest booked in. Restaurant bookings are
+ * handled here; stays and appointments in ./vertical.
  */
 export default async function CancelPage({
   params,
@@ -36,6 +38,25 @@ export default async function CancelPage({
   );
 
   if (!booking) {
+    // Not a restaurant booking: the same link serves stays and appointments.
+    // (Their tables only exist once migration 0006 has run; a missing table
+    // simply yields no row here.)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
+    if (isUuid) {
+      const { data: reservation } = await supabase
+        .from('stay_reservations')
+        .select('*')
+        .eq('cancel_token', token)
+        .maybeSingle<StayReservation>();
+      if (reservation) return <StayCancel token={token} reservation={reservation} done={!!done} />;
+
+      const { data: appointment } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('cancel_token', token)
+        .maybeSingle<Appointment>();
+      if (appointment) return <AppointmentCancel token={token} appointment={appointment} done={!!done} />;
+    }
     return card(<p className="text-sm text-espresso">{getT('en')('cancel.notFound')}</p>);
   }
 

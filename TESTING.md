@@ -9,8 +9,8 @@ at). Unit tests never touch the network at all.
 |---|---|---|---|
 | `npm test` | Vitest | integration part does | unit + integration |
 | `npm run test:unit` | Vitest | no | pure logic: availability/capacity math, i18n, CORS, request validation of the public API, the staging guard itself, and the hermetic booking-flow lock-in (`booking-flow.test.ts`, see below) |
-| `npm run test:integration` | Vitest | yes | the public widget API route handlers against staging: config, availability, booking creation, atomic cover cap (incl. a concurrency race), tenant scoping; plus the booking-flow lock-in with real owners, RLS and the real `create_widget_booking()` (`booking-flow.test.ts`) |
-| `npm run test:e2e` | Playwright | yes | the real app in Chromium: owner login/logout, dashboard redirects, manual bookings + cancel/re-confirm, the embedded guest widget end to end, admin API, CORS over HTTP |
+| `npm run test:integration` | Vitest | yes | the public widget API route handlers against staging: config, availability, booking creation, atomic cover cap (incl. a concurrency race), tenant scoping; plus the booking-flow lock-in with real owners, RLS and the real `create_widget_booking()` (`booking-flow.test.ts`); plus the stays and appointments public APIs with the real `create_stay_reservation()` / `create_appointment()` (`verticals.test.ts`: prices, overlaps, back-to-back stays, buffers, time off, races for the same dates / slot, RLS for the owner) |
+| `npm run test:e2e` | Playwright | yes | the real app in Chromium: owner login/logout, dashboard redirects, manual bookings + cancel/re-confirm, the embedded guest widget end to end, admin API, CORS over HTTP; and for stays and appointments (`stays.spec.ts`, `appointments.spec.ts`): the owner's own dashboard and menu, adding a unit / service, a guest booking through the embedded widget, double-booking refused in the dashboard, guest cancellation by link, the iCal export |
 | `npm run test:rls` | node:test + SQL | yes | Row Level Security tenant isolation (see `tests/rls/README.md`) |
 | `npm run test:all` | all of the above | yes | unit → integration → rls → e2e |
 
@@ -79,6 +79,33 @@ It covers: a guest booking with every field; rejection at the slot cap; owner
 caps per weekday/slot (including Settings round trips) and the manual override;
 tenant scoping; the confirmation and owner emails.
 
+#### Database behaviour without a database server
+
+`tests/helpers/pglite.ts` applies every file in `supabase/migrations` to PGlite
+(PostgreSQL compiled to WebAssembly, in-process) with the Supabase roles,
+default privileges and `auth.uid()` stubbed. Two unit files use it, so they run
+in `npm run test:unit` with no network:
+
+- `verticals-db.test.ts` – migration 0006 itself: `create_stay_reservation()` /
+  `create_appointment()` (overlaps, back-to-back stays, buffers, payment holds
+  and their expiry), EXECUTE grants per role, RLS per tenant, composite foreign
+  keys across tenants, the `business_type` guard, feed cascades.
+- `payments-flow.test.ts` – online payment end to end: the real booking routes
+  and the real Stripe webhook against that schema through
+  `scripts/local/supabase.mjs`, with only Stripe's HTTP API and the Resend SDK
+  faked. Hold → Checkout for the server-computed amount on the business's own
+  account → signed webhook → confirmed + emails once; expiry, Stripe failure,
+  replay, live-mode and "not connected yet" paths.
+
+The other new unit files are pure logic or request validation:
+`stays-pricing-availability`, `stays-ical` (parsing, sync planning, export),
+`stays-sync` (which feed URLs the server will fetch), `stays-api-validation`,
+`payments`, and `appointments-slots` / `-api-validation` / `-actions` / `-email`.
+
+Not covered by an automated test yet: the stays and appointments dashboards and
+widgets in a browser (the Playwright suite still only drives the restaurant
+product), and a real Stripe test-mode round trip.
+
 ### Integration (`tests/integration`)
 
 `tests/integration/setup.ts` runs first in every file: it resolves the staging
@@ -111,7 +138,6 @@ marker must be removed. Current set (2026-10-21):
 | Impossible calendar date (`2026-11-31`) is refused with 400, not 500 | L1 | unit + integration (integration skips itself when no such date falls inside the 60-day window) |
 | Off-grid confirmed covers count toward the slot window they fall into | M3 | unit (availability) + integration (availability and the function) |
 | With `NEXT_PUBLIC_APP_URL` unset the cancel link must not point at production | L9 | unit |
-| `create_widget_booking()` cannot be called with the public anon key | C1 / F1 | integration (flip once migration 0005 is applied to staging) |
 
 ### End to end (`tests/e2e`)
 
@@ -146,12 +172,14 @@ through the logged-in Supabase CLI (`supabase db query --linked --project-ref �
 so it needs `supabase login` but no database password. Details and the table of
 checks: `tests/rls/README.md`.
 
-**Known red (2026-10-21):** eight SQL checks and one API check fail on staging on
-purpose: `create_widget_booking()` is executable by `anon`/`authenticated`, and
-`floor_tables.zone_id` / `booking_tables.{booking_id,table_id}` are not
-tenant-checked. The fix is drafted in
-`tests/rls/proposed/0005_tenant_isolation_fixes.sql`; apply it to staging, re-run
-`npm run test:rls`, then promote. See AUDIT.md section 2.
+It runs two SQL files: `tenant_isolation.sql` (the restaurant product) and
+`verticals_isolation.sql` (every table and function added for stays and
+appointments in migration 0006).
+
+**State on staging (2026-11-11):** migrations 0001–0006 are applied and every
+check passes. The nine checks that were red until then (`create_widget_booking()`
+executable by `anon`/`authenticated`, cross-tenant `zone_id` / `booking_id` /
+`table_id`) were closed by `supabase/migrations/0005_tenant_isolation_fixes.sql`.
 
 ## Continuous integration
 

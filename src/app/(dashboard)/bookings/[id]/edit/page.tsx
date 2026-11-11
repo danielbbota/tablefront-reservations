@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { leaveIfNotRestaurant } from '@/lib/business';
 import { updateBooking } from '@/app/actions';
 import { normalizeSlot } from '@/lib/availability';
 import { asLang, getT } from '@/lib/i18n';
@@ -33,6 +34,7 @@ export default async function EditBookingPage({
         .limit(1)
         .maybeSingle<Pick<BookingTable, 'table_id'>>(),
     ]);
+  leaveIfNotRestaurant(restaurant);
   if (!booking) notFound(); // RLS also hides other restaurants' bookings
   const t = getT(asLang(restaurant?.language));
   const hasFloor = (floorTables ?? []).length > 0;

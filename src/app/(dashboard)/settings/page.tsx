@@ -3,7 +3,8 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import CopyButton from '@/components/copy-button';
 import { saveSettings } from '@/app/actions';
 import { asLang, getT, LANGS, type TKey } from '@/lib/i18n';
-import type { CapacityRule, Restaurant } from '@/lib/types';
+import { businessTypeOf, type CapacityRule, type Restaurant } from '@/lib/types';
+import VerticalSettings from './vertical-settings';
 
 const input =
   'rounded-lg border border-linen bg-white px-2.5 py-2 text-sm text-espresso focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel/30';
@@ -12,15 +13,19 @@ const label = 'block text-sm font-medium text-espresso';
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; paysaved?: string; stripe?: string }>;
 }) {
-  const { error, saved } = await searchParams;
+  const params = await searchParams;
+  const { error, saved } = params;
   const supabase = await createServerSupabase();
   const { data: restaurant } = await supabase
     .from('restaurants')
     .select('*')
     .single<Restaurant>();
   if (!restaurant) return null;
+  if (businessTypeOf(restaurant) !== 'restaurant') {
+    return <VerticalSettings supabase={supabase} business={restaurant} params={params} />;
+  }
   const lang = asLang(restaurant.language);
   const t = getT(lang);
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Runs both layers of the RLS tenant-isolation suite against STAGING only:
-//   1. tests/rls/tenant_isolation.sql  (pure SQL, in one rolled-back transaction)
+//   1. tests/rls/tenant_isolation.sql and verticals_isolation.sql
+//      (pure SQL, each in one rolled-back transaction)
 //   2. tests/rls/api.test.mjs          (real sign-in + PostgREST, node:test)
 // Exit code 1 if any check fails.
 import { spawnSync } from 'node:child_process';
@@ -23,20 +24,23 @@ console.log(`\nRLS tenant-isolation tests → ${project.name} (${project.ref}, $
 let failed = 0;
 
 if (only !== 'api') {
-  console.log('── SQL layer: tests/rls/tenant_isolation.sql ──');
-  try {
-    const rows = sql(null, { file: resolve(here, 'tenant_isolation.sql') });
-    const width = Math.max(...rows.map((r) => `${r.actor} · ${r.tbl} · ${r.action}`.length));
-    for (const r of rows) {
-      const label = `${r.actor} · ${r.tbl} · ${r.action}`.padEnd(width);
-      console.log(`  ${r.pass ? '✔' : '✖'} ${label}  expected ${r.expected}, got ${r.actual}`);
+  for (const name of ['tenant_isolation.sql', 'verticals_isolation.sql']) {
+    console.log(`── SQL layer: tests/rls/${name} ──`);
+    try {
+      const rows = sql(null, { file: resolve(here, name) });
+      const width = Math.max(...rows.map((r) => `${r.actor} · ${r.tbl} · ${r.action}`.length));
+      for (const r of rows) {
+        const label = `${r.actor} · ${r.tbl} · ${r.action}`.padEnd(width);
+        console.log(`  ${r.pass ? '✔' : '✖'} ${label}  expected ${r.expected}, got ${r.actual}`);
+      }
+      const sqlFailed = rows.filter((r) => !r.pass).length;
+      failed += sqlFailed;
+      if (!rows.length) failed += 1;
+      console.log(`\n  ${name}: ${rows.length - sqlFailed}/${rows.length} passed\n`);
+    } catch (e) {
+      failed += 1;
+      console.error(`  ✖ ${name} could not run: ${e.message}\n`);
     }
-    const sqlFailed = rows.filter((r) => !r.pass).length;
-    failed += sqlFailed;
-    console.log(`\n  SQL layer: ${rows.length - sqlFailed}/${rows.length} passed\n`);
-  } catch (e) {
-    failed += 1;
-    console.error(`  ✖ SQL layer could not run: ${e.message}\n`);
   }
 }
 

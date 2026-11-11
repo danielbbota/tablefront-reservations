@@ -1,4 +1,7 @@
 import type { Lang } from './types';
+import { sharedDict } from './i18n-shared';
+import { staysDict } from './i18n-stays';
+import { appointmentsDict } from './i18n-appointments';
 
 export const LANGS: Record<Lang, string> = {
   en: 'English',
@@ -13,8 +16,8 @@ export function asLang(value: unknown): Lang {
   return value === 'pt' || value === 'de' || value === 'fr' ? value : 'en';
 }
 
-/** Dashboard + email strings. Widget strings live in public/widget.js. */
-const dict = {
+/** Restaurant dashboard + email strings. Widget strings live in public/widget.js. */
+const baseDict = {
   en: {
     // nav
     'nav.bookings': 'Bookings',
@@ -642,12 +645,24 @@ const dict = {
   },
 } as const;
 
+/**
+ * Every string, per language: the restaurant product above plus the strings
+ * shared by all products (i18n-shared.ts) and the ones for stays and
+ * appointments (i18n-stays.ts, i18n-appointments.ts).
+ */
+const dict = {
+  en: { ...baseDict.en, ...sharedDict.en, ...staysDict.en, ...appointmentsDict.en },
+  pt: { ...baseDict.pt, ...sharedDict.pt, ...staysDict.pt, ...appointmentsDict.pt },
+  de: { ...baseDict.de, ...sharedDict.de, ...staysDict.de, ...appointmentsDict.de },
+  fr: { ...baseDict.fr, ...sharedDict.fr, ...staysDict.fr, ...appointmentsDict.fr },
+} as const;
+
 export type TKey = keyof (typeof dict)['en'];
 
 /** Returns a translator bound to a language, falling back to English. */
 export function getT(lang: Lang) {
   return (key: TKey, vars?: Record<string, string>): string => {
-    let s: string = dict[lang]?.[key] ?? dict.en[key];
+    let s: string = (dict[lang] as Partial<Record<TKey, string>>)?.[key] ?? dict.en[key];
     for (const [k, v] of Object.entries(vars ?? {})) s = s.replace(`{${k}}`, v);
     return s;
   };

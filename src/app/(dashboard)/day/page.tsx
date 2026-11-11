@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CalendarX2, Pencil } from 'lucide-react';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { leaveIfNotRestaurant } from '@/lib/business';
 import { setServiceStatus } from '@/app/actions';
 import { normalizeSlot, nowInTimezone, resolveMaxCovers, slotsForDate, toMinutes } from '@/lib/availability';
 import { asLang, getT, LOCALE } from '@/lib/i18n';
@@ -52,6 +53,7 @@ export default async function DayPage({
     .select('*')
     .single<Restaurant>();
   if (!restaurant) return null;
+  leaveIfNotRestaurant(restaurant);
   const lang = asLang(restaurant.language);
   const t = getT(lang);
 

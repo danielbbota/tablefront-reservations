@@ -382,12 +382,10 @@ describe('4. a booking is scoped to the correct tenant', () => {
     expect((await rowsAt(B.restaurant.id, '17:00'))[0].notes).toBeNull();
   });
 
-  // AUDIT.md C1 / F1: `create_widget_booking()` is SECURITY DEFINER and still
-  // EXECUTE-able by PUBLIC, so the public anon key can insert a confirmed
-  // booking into any restaurant with any cap, skipping every check in the
-  // route. Correct behaviour: permission denied (42501) and no row. Flip to
-  // `it` once tests/rls/proposed/0005_tenant_isolation_fixes.sql is applied.
-  it.fails('AUDIT C1/F1: the booking function cannot be called with the public anon key', async () => {
+  // AUDIT.md C1 / F1: `create_widget_booking()` is SECURITY DEFINER; before
+  // migration 0005 PUBLIC could still EXECUTE it, so the public anon key could
+  // insert a confirmed booking into any restaurant with any cap.
+  it('AUDIT C1/F1: the booking function cannot be called with the public anon key', async () => {
     const r = await anonClient().rpc('create_widget_booking', {
       p_restaurant_id: A.restaurant.id,
       p_date: date,
