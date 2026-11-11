@@ -44,7 +44,9 @@ describe('GET /api/public/config', () => {
     expect(res.headers.get('access-control-allow-origin')).toBe('*');
     expect(await res.json()).toEqual({
       restaurant: { id: fx.restaurant.id, name: fx.restaurant.name },
+      businessType: 'restaurant',
       language: 'en',
+      currency: 'EUR',
       maxPartySize: MAX_PARTY_SIZE,
       horizonDays: 60,
     });

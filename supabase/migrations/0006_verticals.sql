@@ -16,8 +16,8 @@
 -- Safe to run on a database that only has restaurants: every existing row
 -- becomes business_type = 'restaurant' and nothing else changes for it.
 --
--- (0005 is reserved for tests/rls/proposed/0005_tenant_isolation_fixes.sql.
--- This file does not depend on it, but follows its two lessons from day one:
+-- (This file does not depend on 0005_tenant_isolation_fixes.sql, but follows
+-- its two lessons from day one:
 -- SECURITY DEFINER functions are granted to service_role only, and every
 -- child row is tied to its parent's tenant with a composite foreign key.)
 -- =============================================================================

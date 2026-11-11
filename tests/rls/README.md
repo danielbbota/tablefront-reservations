@@ -59,8 +59,19 @@ bookings, can edit them). A final block re-reads tenant B from outside RLS
   deletes the fixtures in `after()`. Stale `rls-test-*` fixtures older than one
   hour are swept at the start of each run.
 
-## Known failures (as of 2026-10-21)
+## Stays and appointments (`verticals_isolation.sql`)
 
-Three checks fail on staging on purpose until migration 0005 is applied; the
-fix is drafted in `tests/rls/proposed/0005_tenant_isolation_fixes.sql`. See
-AUDIT.md section 2 ("The three confirmed gaps").
+Same contract as `tenant_isolation.sql`, for everything migration 0006 added:
+`payment_accounts`, `stay_units`, `stay_rates`, `stay_ical_feeds`,
+`stay_reservations`, `stay_blocks`, `services`, `staff`, `staff_services`,
+`staff_time_off`, `appointments`. As owner A and as anon it tries to read,
+update, delete and insert tenant B's rows, move an own row into B, hang an own
+row off one of B's parents (unit, feed, staff, service), write
+`payment_accounts`, change `business_type`, and call
+`create_stay_reservation()` / `create_appointment()`.
+
+## State on staging (2026-11-11)
+
+Migrations 0001–0006 are applied; every check in both SQL files and in
+`api.test.mjs` passes. The gaps listed in AUDIT.md section 2 were closed by
+`supabase/migrations/0005_tenant_isolation_fixes.sql`.

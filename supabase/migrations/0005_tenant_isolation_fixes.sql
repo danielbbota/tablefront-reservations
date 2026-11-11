@@ -1,8 +1,7 @@
 -- =============================================================================
--- PROPOSED — NOT APPLIED. Fixes the tenant-isolation gaps found by
--- `npm run test:rls` (tests/rls). Review, then move this file to
--- supabase/migrations/0005_tenant_isolation_fixes.sql and apply to STAGING
--- first, re-run `npm run test:rls`, and only then apply to production.
+-- Tenant-isolation fixes for the gaps found by `npm run test:rls` (tests/rls).
+-- Apply to STAGING first, re-run `npm run test:rls`, and only then apply to
+-- production.
 --
 -- Findings it fixes
 --   F1  create_widget_booking() is callable by anon and authenticated.

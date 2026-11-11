@@ -138,7 +138,6 @@ marker must be removed. Current set (2026-10-21):
 | Impossible calendar date (`2026-11-31`) is refused with 400, not 500 | L1 | unit + integration (integration skips itself when no such date falls inside the 60-day window) |
 | Off-grid confirmed covers count toward the slot window they fall into | M3 | unit (availability) + integration (availability and the function) |
 | With `NEXT_PUBLIC_APP_URL` unset the cancel link must not point at production | L9 | unit |
-| `create_widget_booking()` cannot be called with the public anon key | C1 / F1 | integration (flip once migration 0005 is applied to staging) |
 
 ### End to end (`tests/e2e`)
 
@@ -173,12 +172,14 @@ through the logged-in Supabase CLI (`supabase db query --linked --project-ref â€
 so it needs `supabase login` but no database password. Details and the table of
 checks: `tests/rls/README.md`.
 
-**Known red (2026-10-21):** eight SQL checks and one API check fail on staging on
-purpose: `create_widget_booking()` is executable by `anon`/`authenticated`, and
-`floor_tables.zone_id` / `booking_tables.{booking_id,table_id}` are not
-tenant-checked. The fix is drafted in
-`tests/rls/proposed/0005_tenant_isolation_fixes.sql`; apply it to staging, re-run
-`npm run test:rls`, then promote. See AUDIT.md section 2.
+It runs two SQL files: `tenant_isolation.sql` (the restaurant product) and
+`verticals_isolation.sql` (every table and function added for stays and
+appointments in migration 0006).
+
+**State on staging (2026-11-11):** migrations 0001â€“0006 are applied and every
+check passes. The nine checks that were red until then (`create_widget_booking()`
+executable by `anon`/`authenticated`, cross-tenant `zone_id` / `booking_id` /
+`table_id`) were closed by `supabase/migrations/0005_tenant_isolation_fixes.sql`.
 
 ## Continuous integration
 
