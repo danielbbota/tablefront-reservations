@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+type Product = 'restaurant' | 'stays' | 'appointments';
+
 type CreateResult = {
   restaurant: { id: string; name: string; slug: string };
   owner: { email: string };
@@ -24,6 +26,11 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateResult | null>(null);
+  const [product, setProduct] = useState<Product>('restaurant');
+  // Time slots exist for tables and appointments, not for nights; a cover cap
+  // per slot only exists for tables.
+  const hasSlots = product !== 'stays';
+  const hasCovers = product === 'restaurant';
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,11 +45,13 @@ export default function AdminPage() {
       body: JSON.stringify({
         name: f.get('name'),
         slug: f.get('slug'),
-        businessType: f.get('businessType'),
+        businessType: product,
         timezone: f.get('timezone'),
         language: f.get('language'),
-        slotIntervalMinutes: Number(f.get('slotInterval')),
-        defaultMaxCovers: Number(f.get('defaultMaxCovers')),
+        // Left out when the product has no such setting, so the API applies
+        // its own defaults instead of receiving a 0 from a missing field.
+        ...(hasSlots ? { slotIntervalMinutes: Number(f.get('slotInterval')) } : {}),
+        ...(hasCovers ? { defaultMaxCovers: Number(f.get('defaultMaxCovers')) } : {}),
         ownerEmail: f.get('ownerEmail'),
         ownerPassword: f.get('ownerPassword'),
       }),
@@ -81,7 +90,12 @@ export default function AdminPage() {
           <hr className="border-linen/60" />
           <div>
             <label className={label}>Product</label>
-            <select name="businessType" defaultValue="restaurant" className={input}>
+            <select
+              name="businessType"
+              value={product}
+              onChange={(e) => setProduct(e.target.value as Product)}
+              className={input}
+            >
               <option value="restaurant">Restaurant / bar — table reservations</option>
               <option value="stays">Stays — hotel, guesthouse, Airbnb</option>
               <option value="appointments">Appointments — clinic, barber, salon</option>
@@ -112,16 +126,20 @@ export default function AdminPage() {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={label}>Slot interval (min)</label>
-              <input name="slotInterval" type="number" defaultValue={30} min={15} max={120} className={input} />
+          {hasSlots && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={label}>Slot interval (min)</label>
+                <input name="slotInterval" type="number" defaultValue={30} min={15} max={120} className={input} />
+              </div>
+              {hasCovers && (
+                <div>
+                  <label className={label}>Max covers/slot</label>
+                  <input name="defaultMaxCovers" type="number" defaultValue={20} min={0} className={input} />
+                </div>
+              )}
             </div>
-            <div>
-              <label className={label}>Max covers/slot</label>
-              <input name="defaultMaxCovers" type="number" defaultValue={20} min={0} className={input} />
-            </div>
-          </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={label}>Owner email</label>
