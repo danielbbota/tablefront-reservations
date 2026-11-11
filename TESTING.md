@@ -9,8 +9,8 @@ at). Unit tests never touch the network at all.
 |---|---|---|---|
 | `npm test` | Vitest | integration part does | unit + integration |
 | `npm run test:unit` | Vitest | no | pure logic: availability/capacity math, i18n, CORS, request validation of the public API, the staging guard itself, and the hermetic booking-flow lock-in (`booking-flow.test.ts`, see below) |
-| `npm run test:integration` | Vitest | yes | the public widget API route handlers against staging: config, availability, booking creation, atomic cover cap (incl. a concurrency race), tenant scoping; plus the booking-flow lock-in with real owners, RLS and the real `create_widget_booking()` (`booking-flow.test.ts`) |
-| `npm run test:e2e` | Playwright | yes | the real app in Chromium: owner login/logout, dashboard redirects, manual bookings + cancel/re-confirm, the embedded guest widget end to end, admin API, CORS over HTTP |
+| `npm run test:integration` | Vitest | yes | the public widget API route handlers against staging: config, availability, booking creation, atomic cover cap (incl. a concurrency race), tenant scoping; plus the booking-flow lock-in with real owners, RLS and the real `create_widget_booking()` (`booking-flow.test.ts`); plus the stays and appointments public APIs with the real `create_stay_reservation()` / `create_appointment()` (`verticals.test.ts`: prices, overlaps, back-to-back stays, buffers, time off, races for the same dates / slot, RLS for the owner) |
+| `npm run test:e2e` | Playwright | yes | the real app in Chromium: owner login/logout, dashboard redirects, manual bookings + cancel/re-confirm, the embedded guest widget end to end, admin API, CORS over HTTP; and for stays and appointments (`stays.spec.ts`, `appointments.spec.ts`): the owner's own dashboard and menu, adding a unit / service, a guest booking through the embedded widget, double-booking refused in the dashboard, guest cancellation by link, the iCal export |
 | `npm run test:rls` | node:test + SQL | yes | Row Level Security tenant isolation (see `tests/rls/README.md`) |
 | `npm run test:all` | all of the above | yes | unit → integration → rls → e2e |
 
